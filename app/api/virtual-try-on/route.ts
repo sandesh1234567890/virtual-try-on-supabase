@@ -124,9 +124,10 @@ IMPORTANT: DO NOT return the original image 1. You MUST modify the clothing.`;
             return NextResponse.json({ error: "Failed to generate image" }, { status: response.status });
         }
 
-        const part = result?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
-        const base64Data = part?.inlineData?.data;
-        const mimeType = part?.inlineData?.mimeType || 'image/png';
+        const part = result?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData || p.inline_data);
+        const imageData = part?.inlineData || part?.inline_data;
+        const base64Data = imageData?.data;
+        const mimeType = imageData?.mimeType || imageData?.mime_type || 'image/png';
 
         if (!base64Data) {
             console.warn("POST /api/virtual-try-on: No image data in Gemini response");
