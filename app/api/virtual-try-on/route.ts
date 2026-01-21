@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${API_KEY}`;
 
 async function prepareImage(buffer: Buffer, mimeType: string): Promise<{ data: string, mimeType: string }> {
     // Gemini supports jpeg, png, webp, heic, heif. It does NOT support avif.
@@ -23,6 +23,7 @@ async function prepareImage(buffer: Buffer, mimeType: string): Promise<{ data: s
 
 export async function POST(request: NextRequest) {
     try {
+        console.log("POST /api/virtual-try-on: Received request");
         const formData = await request.formData();
         const userImage = formData.get('userImage') as Blob;
         const garmentImage = formData.get('garmentImage') as Blob | null;
@@ -30,12 +31,16 @@ export async function POST(request: NextRequest) {
         const productName = formData.get('productName') as string;
 
         if (!userImage) {
+            console.warn("POST /api/virtual-try-on: Missing user image");
             return NextResponse.json({ error: "Missing user image" }, { status: 400 });
         }
 
         if (!garmentImage && !garmentImageUrl) {
+            console.warn("POST /api/virtual-try-on: Missing garment image");
             return NextResponse.json({ error: "Missing garment image (file or URL)" }, { status: 400 });
         }
+
+        console.log(`POST /api/virtual-try-on: Processing images for "${productName}"`);
 
         // Prepare User Image
         const userBuffer = Buffer.from(await userImage.arrayBuffer());
@@ -46,12 +51,19 @@ export async function POST(request: NextRequest) {
         let garmentMimeType = '';
 
         if (garmentImageUrl) {
-            const garmentRes = await fetch(garmentImageUrl);
-            const garmentBlob = await garmentRes.blob();
-            const garmentBuffer = Buffer.from(await garmentBlob.arrayBuffer());
-            const prepared = await prepareImage(garmentBuffer, garmentBlob.type || 'image/jpeg');
-            garmentBase64 = prepared.data;
-            garmentMimeType = prepared.mimeType;
+            console.log(`POST /api/virtual-try-on: Fetching garment from URL: ${garmentImageUrl}`);
+            try {
+                const garmentRes = await fetch(garmentImageUrl);
+                if (!garmentRes.ok) throw new Error(`Failed to fetch image: ${garmentRes.statusText}`);
+                const garmentBlob = await garmentRes.blob();
+                const garmentBuffer = Buffer.from(await garmentBlob.arrayBuffer());
+                const prepared = await prepareImage(garmentBuffer, garmentBlob.type || 'image/jpeg');
+                garmentBase64 = prepared.data;
+                garmentMimeType = prepared.mimeType;
+            } catch (fetchErr: any) {
+                console.error("Error fetching garment image:", fetchErr);
+                return NextResponse.json({ error: "Could not retrieve garment image from source." }, { status: 424 });
+            }
         } else if (garmentImage) {
             const garmentBuffer = Buffer.from(await garmentImage.arrayBuffer());
             const prepared = await prepareImage(garmentBuffer, garmentImage.type || 'image/jpeg');
@@ -86,6 +98,7 @@ IMPORTANT: DO NOT return the original image 1. You MUST modify the clothing.`;
             }
         };
 
+        console.log("POST /api/virtual-try-on: Calling Gemini API...");
         const response = await fetch(GEMINI_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -94,16 +107,21 @@ IMPORTANT: DO NOT return the original image 1. You MUST modify the clothing.`;
 
         const result = await response.json();
 
-        // Handle specific modality error to give the user better feedback
-        if (result.error?.message?.includes('modality')) {
-            return NextResponse.json({
-                error: "Your Gemini API key does not have 'Image Generation' permissions yet. This is a limited Google preview feature. Please use an account with Image Generation enabled.",
-                details: result.error.message
-            }, { status: 403 });
+        // Handle specific Gemini errors
+        if (result.error) {
+            console.error("Gemini API Error:", result.error);
+            if (result.error.message?.includes('modality')) {
+                return NextResponse.json({
+                    error: "Your Gemini API key does not have 'Image Generation' permissions yet. Please ensure your account has access to experimental image features.",
+                    details: result.error.message
+                }, { status: 403 });
+            }
+            return NextResponse.json({ error: result.error.message || "Gemini service error" }, { status: response.status });
         }
 
         if (!response.ok) {
-            return NextResponse.json({ error: result.error?.message || "API Error" }, { status: response.status });
+            console.error("Gemini Response Not OK:", response.status, result);
+            return NextResponse.json({ error: "Failed to generate image" }, { status: response.status });
         }
 
         const part = result?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
@@ -111,16 +129,18 @@ IMPORTANT: DO NOT return the original image 1. You MUST modify the clothing.`;
         const mimeType = part?.inlineData?.mimeType || 'image/png';
 
         if (!base64Data) {
-            return NextResponse.json({ error: "No image generated" }, { status: 500 });
+            console.warn("POST /api/virtual-try-on: No image data in Gemini response");
+            return NextResponse.json({ error: "No image was generated. The prompt might have been blocked or the service is busy." }, { status: 500 });
         }
 
+        console.log("POST /api/virtual-try-on: Success!");
         return NextResponse.json({
             image: base64Data,
             mimeType: mimeType
         });
 
     } catch (error: any) {
-        console.error("Server Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("POST /api/virtual-try-on: SERVER ERROR:", error);
+        return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 });
     }
 }

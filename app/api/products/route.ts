@@ -18,13 +18,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        console.log("POST /api/products: Received request");
         const body = await request.json();
 
         // Basic validation
         if (!body.name || !body.image || !body.category) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            console.warn("POST /api/products: Missing required fields", body);
+            return NextResponse.json({ error: "Missing required fields (name, image, category)" }, { status: 400 });
         }
 
+        console.log(`POST /api/products: Creating product "${body.name}"`);
         const newProduct = await prisma.product.create({
             data: {
                 name: body.name,
@@ -34,13 +37,17 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        console.log(`POST /api/products: Success! Created ID: ${newProduct.id}`);
         return NextResponse.json({
             message: "Product added successfully",
             product: newProduct,
             success: true
         });
     } catch (e: any) {
-        console.error("Product create error:", e);
-        return NextResponse.json({ error: e.message || "Invalid data" }, { status: 400 });
+        console.error("POST /api/products: ERROR:", e);
+        return NextResponse.json({
+            error: "Failed to create product",
+            details: e.message || "Invalid database operation"
+        }, { status: 500 });
     }
 }
