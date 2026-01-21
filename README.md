@@ -41,11 +41,15 @@ A premium virtual try-on application built with **Next.js 15**, **Prisma**, **Su
 3. **Build Command**: `prisma generate && next build` (This is usually automatic).
 
 ### 3. Database Initialization
-Once deployed, Vercel will attempt to connect. If your database is empty, the app will auto-seed initial products on the first load. You can also run:
-```bash
-npx prisma db push
-```
-to ensure the schema is synced.
+Once deployed, Vercel will attempt to connect. If your database is empty, the app will auto-seed initial products on the first load. You can also run `npx prisma db push` to ensure the schema is synced.
+
+> [!CAUTION]
+> **Database Connection Error on Vercel?**
+> If you see a connection error on your live site, it's because Vercel requires a **Connection Pooler**.
+> 1. Go to your **Supabase Dashboard** -> **Settings** -> **Database**.
+> 2. Find the **Connection string** section and select **"Transaction"** mode.
+> 3. Use that URL (port 6543) for your `DATABASE_URL` in Vercel.
+> 4. Ensure you also set `DIRECT_URL` (port 5432) in Vercel.
 
 ## 🔐 Security
 The Admin Dashboard is protected by a password guard. You can change the password by updating the `ADMIN_PASSWORD` environment variable.
