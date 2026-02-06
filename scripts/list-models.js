@@ -1,0 +1,15 @@
+require('dotenv').config();
+const API_KEY = process.env.GEMINI_API_KEY;
+const LIST_URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
+
+async function listModels() {
+    try {
+        const res = await fetch(LIST_URL);
+        const data = await res.json();
+        console.log(JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+listModels();

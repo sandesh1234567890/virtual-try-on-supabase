@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Zap } from 'lucide-react';
 
 
 export default function Navbar() {
@@ -16,9 +16,13 @@ export default function Navbar() {
                         Sandesh Surwase
                     </span>
                 </Link>
-                <nav className="flex items-center gap-6 text-sm font-medium text-gray-600">
-                    <Link href="/" className="hover:text-gray-900 transition-colors">Collection</Link>
-                    <Link href="/admin" className="hover:text-gray-900 transition-colors">Admin</Link>
+                <nav className="flex items-center gap-6 text-sm font-medium">
+                    <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors">Collection</Link>
+                    <Link href="/2.html" className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:scale-105 transition-all text-xs font-black uppercase tracking-widest">
+                        <Zap size={14} className="fill-white" />
+                        Combo Premium+
+                    </Link>
+                    <Link href="/admin" className="text-gray-600 hover:text-gray-900 transition-colors">Admin</Link>
                 </nav>
             </div>
         </header>

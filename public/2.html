@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Your Dragon | Neural Multi-Garment Synthesis</title>
+    <!-- Modern UI Frameworks -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;600;700;900&display=swap');
+
+        :root {
+            --dragon-orange: #f97316;
+            --dragon-red: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        .brand-font {
+            font-family: 'Cinzel', serif;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        .canvas-container {
+            aspect-ratio: 3/4;
+            max-height: 60vh;
+            width: 100%;
+        }
+
+        @media (min-width: 1024px) {
+            .canvas-container {
+                aspect-ratio: auto;
+                height: 100%;
+                min-height: 650px;
+            }
+        }
+
+        .card-active {
+            border-color: var(--dragon-orange) !important;
+            background: rgba(249, 115, 22, 0.1) !important;
+            box-shadow: 0 0 30px rgba(249, 115, 22, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+        }
+
+        #notification {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translate(-50%, 200%);
+        }
+
+        #notification.show {
+            transform: translate(-50%, 0);
+        }
+
+        @keyframes scanline {
+            0% {
+                transform: translateY(-100%);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
+        }
+
+        .scanner-bar {
+            height: 4px;
+            background: linear-gradient(to right, transparent, var(--dragon-orange), transparent);
+            animation: scanline 2.5s linear infinite;
+        }
+    </style>
+</head>
+
+<body class="selection:bg-orange-500/30">
+
+    <!-- Notification UI -->
+    <div id="notification" class="fixed bottom-8 left-1/2 z-[100] w-[90%] max-w-sm">
+        <div
+            class="bg-slate-900/95 backdrop-blur-2xl border border-slate-700 p-4 rounded-3xl shadow-2xl flex items-center gap-4">
+            <div id="notif-icon-box" class="p-2 rounded-xl bg-orange-500/20 text-orange-500">
+                <i data-lucide="info" class="h-5 w-5"></i>
+            </div>
+            <p id="notif-text" class="text-sm font-bold text-slate-200 text-center flex-1">System Ready</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-slate-950/90 backdrop-blur-2xl border-b border-slate-800/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 md:h-20">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-orange-500 to-red-600 p-2 rounded-xl shadow-lg">
+                        <i data-lucide="flame" class="text-white h-5 w-5 md:h-6 md:w-6"></i>
+                    </div>
+                    <h1
+                        class="text-xl md:text-2xl font-black tracking-tighter uppercase brand-font bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
+                        What Your Dragon
+                    </h1>
+                </div>
+                <div class="flex gap-2">
+                    <button
+                        class="bg-slate-800 text-white p-2.5 rounded-full border border-slate-700 hover:bg-slate-700 transition-all">
+                        <i data-lucide="shopping-bag" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main
+        class="pt-20 md:pt-28 pb-12 px-4 sm:px-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-8 lg:gap-12 min-h-screen">
+
+        <!-- VISUALIZATION -->
+        <div class="w-full lg:w-7/12 order-1 lg:order-2">
+            <div id="canvas"
+                class="relative bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-800/50 canvas-container flex items-center justify-center group">
+
+                <!-- State: Initial Upload Panel -->
+                <div id="upload-panel" class="text-center p-8 max-w-md w-full animate-in fade-in zoom-in duration-500">
+                    <div
+                        class="w-24 h-24 rounded-full bg-slate-900 mx-auto flex items-center justify-center mb-6 border border-slate-800 shadow-2xl">
+                        <i data-lucide="user-plus" class="text-slate-500 h-10 w-10"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-white mb-3 brand-font uppercase italic text-center">Identity
+                        Node</h2>
+                    <p class="text-slate-400 mb-8 text-sm leading-relaxed text-center">
+                        Upload a photo of yourself standing. This will be the base for our neural garment synthesis.
+                    </p>
+
+                    <input type="file" id="file-upload" class="hidden" accept="image/*">
+                    <button id="upload-trigger"
+                        class="w-full py-5 rounded-2xl bg-white text-slate-950 font-black hover:bg-slate-100 transition-all shadow-2xl flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+                        <i data-lucide="upload-cloud" class="h-5 w-5"></i> Capture Photo
+                    </button>
+                </div>
+
+                <!-- State: Active Render Display -->
+                <div id="active-panel"
+                    class="hidden w-full h-full relative flex items-center justify-center bg-[#010101]">
+                    <div class="absolute top-6 right-6 z-40 flex flex-col gap-3">
+                        <button onclick="resetApp()"
+                            class="bg-black/60 backdrop-blur-xl text-white p-3.5 rounded-full border border-white/10 hover:bg-red-600 transition-all shadow-2xl">
+                            <i data-lucide="rotate-ccw" class="h-5 w-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="absolute top-6 left-6 z-40">
+                        <span id="status-chip"
+                            class="px-4 py-2 rounded-full bg-slate-900/90 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                            Identity Locked
+                        </span>
+                    </div>
+
+                    <img id="display-image" src="" alt="Neural Synthesis Result"
+                        class="max-w-full max-h-full object-contain transition-all duration-1000">
+
+                    <!-- AI Synthesis Overlay -->
+                    <div id="ai-overlay"
+                        class="hidden absolute inset-0 flex flex-col items-center justify-center z-50 bg-black/95 backdrop-blur-3xl">
+                        <div class="scanner-bar absolute w-full top-0"></div>
+                        <div class="relative mb-10">
+                            <div class="w-32 h-32 border-2 border-slate-800 rounded-full"></div>
+                            <div
+                                class="absolute top-0 left-0 w-32 h-32 border-t-2 border-orange-500 rounded-full animate-spin">
+                            </div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <i data-lucide="zap" class="text-orange-500 h-12 w-12 animate-pulse"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-orange-400 font-mono text-[10px] tracking-[0.6em] uppercase font-black">Neural
+                            Re-Synthesis</h3>
+                        <p class="text-slate-600 text-[9px] mt-4 uppercase tracking-[0.3em] italic">Mapping Combo
+                            Layers...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SELECTION PANEL -->
+        <div class="w-full lg:w-5/12 order-2 lg:order-1 flex flex-col gap-6">
+
+            <!-- Custom Try-On Cart Design -->
+            <div
+                class="relative bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-2xl flex-1 flex flex-col shadow-2xl group overflow-hidden">
+
+                <!-- Gradient Glow Effect -->
+                <div
+                    class="absolute -top-24 -right-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-orange-500/30 transition-all duration-1000">
+                </div>
+
+                <div class="relative flex items-center justify-between mb-8">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="layers" class="text-orange-500 h-5 w-5"></i>
+                            <h2 class="text-xl font-black brand-font italic uppercase text-white tracking-wide">
+                                Custom Loadout
+                            </h2>
+                        </div>
+                        <p class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold pl-7">Neural Wardrobe
+                            Sytem</p>
+                    </div>
+                    <button onclick="clearSelections()"
+                        class="text-[9px] font-black uppercase text-slate-500 hover:text-white hover:bg-red-500/20 transition-all border border-slate-800 hover:border-red-500/50 px-4 py-2 rounded-full flex items-center gap-2">
+                        <i data-lucide="trash-2" class="h-3 w-3"></i> Reset
+                    </button>
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="flex p-1.5 bg-black/40 rounded-2xl mb-6 border border-white/5 backdrop-blur-md">
+                    <button onclick="switchCategory('tops')" id="cat-tops"
+                        class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all bg-gradient-to-b from-slate-800 to-slate-900 text-orange-400 shadow-lg border border-white/5 flex flex-col items-center gap-1">
+                        <i data-lucide="shirt" class="h-4 w-4 mb-1"></i> Tops
+                    </button>
+                    <button onclick="switchCategory('bottoms')" id="cat-bottoms"
+                        class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500 hover:text-white flex flex-col items-center gap-1">
+                        <i data-lucide="scissors" class="h-4 w-4 mb-1"></i> Bottoms
+                    </button>
+                    <button onclick="switchCategory('shoes')" id="cat-shoes"
+                        class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500 hover:text-white flex flex-col items-center gap-1">
+                        <i data-lucide="footprints" class="h-4 w-4 mb-1"></i> Kicks
+                    </button>
+                </div>
+
+                <!-- Product Grid -->
+                <div id="grid-content"
+                    class="grid grid-cols-2 gap-4 h-[300px] lg:h-[350px] overflow-y-auto pr-2 custom-scrollbar pb-4">
+                    <!-- Loaded via JS -->
+                </div>
+
+                <!-- Enhanced Neural Tray -->
+                <div class="mt-auto pt-6 border-t border-white/5">
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="flex flex-col">
+                            <h3 class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Fabric
+                                Buffer</h3>
+                            <div class="h-0.5 w-12 bg-orange-500 rounded-full"></div>
+                        </div>
+                        <span id="combo-count"
+                            class="text-[9px] font-bold text-black bg-orange-500 px-3 py-1 rounded-full uppercase tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.4)]">
+                            0 / 3 Active
+                        </span>
+                    </div>
+                    <div class="flex gap-3 p-3 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-lg justify-start overflow-x-auto"
+                        id="buffer-tray">
+                        <!-- Combo slots -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ignite Button -->
+            <button id="synthesis-btn" onclick="handleGenerate()"
+                class="relative w-full py-6 rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] transition-all duration-300 overflow-hidden group btn-gradient shadow-[0_10px_40px_-10px_rgba(249,115,22,0.5)] hover:shadow-[0_20px_60px_-10px_rgba(249,115,22,0.7)] active:scale-95 border border-white/10">
+                <span
+                    class="relative z-10 flex items-center justify-center gap-4 text-white group-hover:tracking-[0.4em] transition-all">
+                    <i data-lucide="zap" class="h-6 w-6 animate-pulse"></i> Ignite Combo
+                </span>
+                <div
+                    class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out">
+                </div>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const PRODUCTS = {
+            tops: [
+                { id: 't1', name: 'Dragon Heavy Tee', img: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=400' },
+                { id: 't2', name: 'Obsidian Tech Hoodie', img: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=400' },
+                { id: 't3', name: 'Cyber Shell Mesh', img: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&q=80&w=400' },
+                { id: 't4', name: 'Imperial Dragon Silk', img: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=400' },
+            ],
+            bottoms: [
+                { id: 'b1', name: 'Cargo Tech Pants', img: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&q=80&w=400' },
+                { id: 'b2', name: 'Raw Architecture Denim', img: 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?auto=format&fit=crop&q=80&w=400' },
+                { id: 'b3', name: 'Stealth Leather Slacks', img: 'https://images.unsplash.com/photo-1551488852-081bd4c9028c?auto=format&fit=crop&q=80&w=400' },
+            ],
+            shoes: [
+                { id: 's1', name: 'Talon Low Sneakers', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=400' },
+                { id: 's2', name: 'Scale-Lock Tech Boots', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=400' },
+                { id: 's3', name: 'Vapor Urban Runners', img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&q=80&w=400' },
+            ]
+        };
+
+        let currentCategory = 'tops';
+        let userImageBase64 = null;
+        let selections = { tops: null, bottoms: null, shoes: null };
+        let isProcessing = false;
+
+        const getEl = (id) => document.getElementById(id);
+
+        function init() {
+            lucide.createIcons();
+
+            // Upload Trigger Handler
+            getEl('upload-trigger').onclick = () => getEl('file-upload').click();
+
+            getEl('file-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    userImageBase64 = reader.result;
+                    getEl('upload-panel').classList.add('hidden');
+                    getEl('active-panel').classList.remove('hidden');
+                    getEl('display-image').src = userImageBase64;
+                    showNotification("Identify Signal Locked");
+                };
+                reader.readAsDataURL(file);
+            });
+
+            renderGrid();
+            updateBuffer();
+        }
+
+        function showNotification(text, error = false) {
+            const notif = getEl('notification');
+            const notifText = getEl('notif-text');
+            const iconBox = getEl('notif-icon-box');
+
+            notifText.textContent = text;
+            iconBox.className = `p-2 rounded-xl ${error ? 'bg-red-500/20 text-red-500' : 'bg-orange-500/20 text-orange-500'}`;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 5000);
+        }
+
+        function switchCategory(cat) {
+            currentCategory = cat;
+            const icons = { tops: 'shirt', bottoms: 'scissors', shoes: 'footprints', dresses: 'stars' };
+            const labels = { tops: 'Tops', bottoms: 'Bottoms', shoes: 'Kicks', dresses: 'Dresses' };
+
+            ['tops', 'bottoms', 'shoes', 'dresses'].forEach(c => {
+                const btn = getEl(`cat-${c}`);
+                if (btn) {
+                    const isActive = c === cat;
+                    btn.className = isActive
+                        ? 'flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all bg-gradient-to-b from-slate-800 to-slate-900 text-orange-400 shadow-lg border border-white/5 flex flex-col items-center gap-1 scale-105'
+                        : 'flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500 hover:text-white flex flex-col items-center gap-1 hover:bg-white/5';
+
+                    // Simple re-render of content to ensure icons persist
+                    btn.innerHTML = `<i data-lucide="${icons[c]}" class="h-4 w-4 mb-1"></i> ${labels[c]}`;
+                }
+            });
+            renderGrid();
+            lucide.createIcons();
+        }
+
+        function renderGrid() {
+            const grid = getEl('grid-content');
+            const items = PRODUCTS[currentCategory];
+            grid.innerHTML = items.map(item => {
+                const active = selections[currentCategory]?.id === item.id;
+                return `
+                    <div onclick="selectItem('${currentCategory}', '${item.id}')" 
+                        class="relative group cursor-pointer rounded-[2rem] overflow-hidden border-2 transition-all duration-300 ${active ? 'card-active' : 'border-slate-800/30 bg-slate-900/10'}">
+                        <img src="${item.img}" class="w-full h-32 lg:h-40 object-cover transition-transform duration-1000 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent p-4 flex flex-col justify-end">
+                            <p class="text-[9px] font-black text-white uppercase tracking-tighter">${item.name}</p>
+                            ${active ? '<div class="absolute top-3 right-3 bg-orange-500 p-1 rounded-full shadow-lg"><i data-lucide="check" class="text-white h-3 w-3"></i></div>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function selectItem(cat, id) {
+            const item = PRODUCTS[cat].find(p => p.id === id);
+            selections[cat] = (selections[cat]?.id === id) ? null : item;
+            renderGrid();
+            updateBuffer();
+        }
+
+        function updateBuffer() {
+            const tray = getEl('buffer-tray');
+            const total = Object.values(selections).filter(Boolean).length;
+            getEl('combo-count').textContent = `${total} / 3 Active`;
+
+            tray.innerHTML = Object.entries(selections).map(([key, item]) => `
+                <div class="relative flex-shrink-0 w-16 h-16 rounded-xl border flex items-center justify-center overflow-hidden transition-all group ${item ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-dashed border-slate-700 bg-white/5'}">
+                    ${item 
+                        ? `<img src="${item.img}" class="w-full h-full object-cover">
+                           <div class="absolute inset-0 bg-orange-500/20 mix-blend-overlay"></div>
+                           <button onclick="selectItem('${key}', '${item.id}')" class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="x" class="text-white h-5 w-5"></i>
+                           </button>` 
+                        : `<span class="text-[8px] text-slate-600 font-black uppercase tracking-widest">${key[0]}</span>`
+                    }
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function clearSelections() {
+            selections = { tops: null, bottoms: null, shoes: null };
+            renderGrid();
+            updateBuffer();
+        }
+
+        function resetApp() {
+            userImageBase64 = null;
+            clearSelections();
+            getEl('upload-panel').classList.remove('hidden');
+            getEl('active-panel').classList.add('hidden');
+            getEl('file-upload').value = '';
+        }
+
+        async function urlToBase64(url) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (err) {
+                console.error("Failed to fetch image:", url, err);
+                return null;
+            }
+        }
+
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response;
+                    if (response.status === 429 || response.status >= 500) {
+                        await new Promise(r => setTimeout(r, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    return response;
+                } catch (err) {
+                    if (i === maxRetries - 1) throw err;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        async function handleGenerate() {
+            if (!userImageBase64) return showNotification("Identity Input Required", true);
+            const activeCombo = Object.entries(selections)
+                .filter(([_, val]) => val !== null)
+                .map(([key, val]) => `${key.toUpperCase()}: ${val.name}`);
+
+            if (activeCombo.length === 0) return showNotification("Garment selection empty", true);
+
+            isProcessing = true;
+            getEl('ai-overlay').classList.remove('hidden');
+            getEl('synthesis-btn').disabled = true;
+
+            try {
+                // IMPORTANT: The environment injects the key at runtime.
+                const apiKey = "AIzaSyCHQgJMSET_WgvndHtEOMCCH8lKrBB2zUw";
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`;
+
+                let mappingInstructions = "";
+                if (selections.dresses) {
+                    mappingInstructions = `
+                    1. FULL BODY: Map the DRESS garment onto the person's body, fitting the torso and flowing down the legs.
+                    2. FEET: Replace footwear with selected SHOES (if any).
+                    3. IGNORE: Do not apply separate TOPS or BOTTOMS if a DRESS is present.
+                    `;
+                } else {
+                    mappingInstructions = `
+                    1. TORSO: Map the TOP garment (if selected) onto the body torso. Ensure it layers naturally over the waistband.
+                    2. LEGS: Map the BOTTOM garment (if selected) onto the legs. Ensure the hem falls realistically over the footwear.
+                    3. FEET: Replace footwear with selected SHOES (if selected).
+                    `;
+                }
+
+                const prompt = `Virtual Try-On Fashion Task:
+                Perform a high-fidelity neural synthesis by applying the following combo onto the person in the provided photo: ${activeCombo.join(', ')}.
+                
+                Neural Layering Instructions:
+                ${mappingInstructions}
+                
+                CONSTRAINTS:
+                - PRESERVE the exact face, pose, and original background from the user source photo.
+                - Output only the final synthesized high-resolution image result.`;
+
+                const imageParts = [{ inlineData: { mimeType: "image/jpeg", data: userImageBase64.split(',')[1] } }];
+
+                // Fetch and add garment images
+                for (const [key, item] of Object.entries(selections)) {
+                    if (item) {
+                        showNotification(`Fetching ${item.name}...`);
+                        const b64 = await urlToBase64(item.img);
+                        if (b64) {
+                            imageParts.push({ inlineData: { mimeType: "image/jpeg", data: b64 } });
+                        }
+                    }
+                }
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            ...imageParts
+                        ]
+                    }],
+                    generationConfig: { responseModalities: ["IMAGE"] }
+                };
+
+                const response = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API Error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+                if (imagePart?.inlineData?.data) {
+                    getEl('display-image').src = `data:image/png;base64,${imagePart.inlineData.data}`;
+                    showNotification("Combo Synthesized Successfully");
+                } else {
+                    const textRefusal = result.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;
+                    const errorMsg = textRefusal || "Synthesis failed: No image data returned. This might be due to safety filters or incorrect garment mapping.";
+                    throw new Error(errorMsg);
+                }
+
+            } catch (err) {
+                console.error(err);
+                showNotification(err.message, true);
+            } finally {
+                isProcessing = false;
+                getEl('ai-overlay').classList.add('hidden');
+                getEl('synthesis-btn').disabled = false;
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>

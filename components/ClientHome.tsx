@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from "react";
+import Link from 'next/link';
 import ProductCard from "@/components/ProductCard";
 import Navbar from "@/components/Navbar";
 import TryOnGenerator from "@/components/TryOnGenerator";
 import { Product } from "@/lib/products";
-import { ArrowRight, Sparkles, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Sparkles, ShoppingBag, Zap } from 'lucide-react';
 
 interface ClientHomeProps {
     products: Product[];
@@ -46,9 +47,16 @@ export default function ClientHome({ products, categories, activeCategory }: Cli
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-                        <a href="#collection" className="px-8 py-4 bg-white text-gray-900 rounded-full font-bold hover:bg-gray-100 transition-all flex items-center gap-2">
+                        <a href="#collection" className="px-8 py-4 bg-white text-gray-900 rounded-full font-bold hover:bg-gray-100 transition-all flex items-center gap-2 shadow-xl">
                             Explore Collection <ArrowRight size={18} />
                         </a>
+                        <Link
+                            href="/2.html"
+                            className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-full font-bold hover:scale-105 transition-all flex items-center gap-2 shadow-xl shadow-orange-500/20"
+                        >
+                            <Zap size={18} className="fill-white" />
+                            Combo Studio <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded uppercase tracking-widest">Premium+</span>
+                        </Link>
                         <button
                             onClick={() => setIsCustomTryOnOpen(true)}
                             className="px-8 py-4 bg-white/10 text-white border border-white/20 rounded-full font-bold hover:bg-white/20 transition-all backdrop-blur-sm"
