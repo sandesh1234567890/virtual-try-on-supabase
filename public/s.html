@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V-ROUND PRO | Virtual 360 Dress Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hud-gradient {
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 40%, transparent 60%, rgba(0, 0, 0, 0.8) 100%);
+        }
+
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-neutral-950 text-neutral-100 min-h-screen p-4 md:p-8 flex flex-col items-center">
+
+    <!-- Hidden Canvas for Export -->
+    <canvas id="exportCanvas" width="1080" height="1440" class="hidden"></canvas>
+
+    <!-- Header -->
+    <header class="w-full max-w-4xl flex items-center justify-between mb-12">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 p-2 rounded-xl">
+                <i data-lucide="video" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">V-ROUND <span
+                        class="text-indigo-400 font-light">PRO</span></h1>
+                <p class="text-neutral-500 text-sm">Automated 360 Turnarounds</p>
+            </div>
+        </div>
+        <button id="resetBtn"
+            class="hidden text-neutral-400 hover:text-white text-sm transition-colors px-4 py-2 border border-neutral-800 rounded-lg flex items-center gap-2">
+            <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+            Reset
+        </button>
+    </header>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+
+        <!-- Left Column: Controls -->
+        <section id="controlsSection" class="space-y-6 order-2 lg:order-1">
+
+            <!-- Upload View -->
+            <div id="uploadView" class="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-2xl">
+                <h2 class="text-xl font-semibold mb-2 flex items-center gap-2">
+                    <i data-lucide="upload" class="w-5 h-5 text-indigo-400"></i>
+                    Step 1: Content Input
+                </h2>
+                <p class="text-neutral-400 text-sm mb-8">
+                    Upload a fashion photo. V-ROUND will generate the spatial turnaround automatically.
+                </p>
+
+                <label id="dropZone"
+                    class="group relative flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-neutral-700 rounded-2xl cursor-pointer bg-neutral-900/50 hover:bg-neutral-800/50 hover:border-indigo-500/50 transition-all overflow-hidden">
+                    <div id="uploadPrompt" class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <i data-lucide="image" class="w-12 h-12 mb-4 text-neutral-600 group-hover:text-indigo-400"></i>
+                        <p class="mb-2 text-sm text-neutral-300">
+                            <span class="font-semibold text-white">Select Photo</span>
+                        </p>
+                        <p class="text-xs text-neutral-500 uppercase tracking-widest">Single Perspective</p>
+                    </div>
+                    <img id="sourcePreview" class="hidden w-full h-full object-cover" src="" alt="Source">
+                    <input type="file" id="fileInput" class="hidden" accept="image/*">
+                </label>
+
+                <button id="processBtn"
+                    class="hidden w-full mt-8 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-5 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-500/10 active:scale-[0.98]">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    Generate Turnaround Sequence
+                </button>
+            </div>
+
+            <!-- Processing View -->
+            <div id="processingView" class="hidden bg-neutral-900 border border-neutral-800 rounded-3xl p-10 space-y-8">
+                <div class="flex flex-col items-center text-center space-y-4">
+                    <div class="relative">
+                        <div
+                            class="w-20 h-20 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin">
+                        </div>
+                        <i data-lucide="sparkles" class="absolute inset-0 m-auto w-8 h-8 text-indigo-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold">Spatial Rendering...</h2>
+                        <p class="text-neutral-400 text-sm mt-1">Reconstructing garments in 3D space</p>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs font-mono text-indigo-400">
+                        <span>AI PROCESSING</span>
+                        <span id="progressText">0%</span>
+                    </div>
+                    <div class="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                        <div id="progressBar" class="bg-indigo-500 h-full transition-all duration-700 ease-out"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="stepList" class="grid grid-cols-1 gap-3">
+                    <div id="step1"
+                        class="p-4 rounded-xl border border-neutral-700 text-neutral-500 flex items-center justify-between">
+                        <span>Right Profile Mapping</span>
+                    </div>
+                    <div id="step2"
+                        class="p-4 rounded-xl border border-neutral-700 text-neutral-500 flex items-center justify-between">
+                        <span>Posterior Reconstruction</span>
+                    </div>
+                    <div id="step3"
+                        class="p-4 rounded-xl border border-neutral-700 text-neutral-500 flex items-center justify-between">
+                        <span>Left Profile Synthesis</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview/Output Control View -->
+            <div id="outputView"
+                class="hidden bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-2xl space-y-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold">Output Control</h2>
+                        <p class="text-neutral-500 text-xs">Sync complete &bull; Ready for export</p>
+                    </div>
+                    <div
+                        class="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border border-emerald-500/20 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Synced
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button id="togglePlayBtn"
+                        class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-neutral-700 shadow-lg">
+                        <i data-lucide="play" id="playIcon" class="w-5 h-5"></i>
+                        <span id="playText">Preview</span>
+                    </button>
+                    <button id="exportBtn"
+                        class="flex-1 bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all shadow-xl">
+                        <i data-lucide="download" id="exportIcon" class="w-5 h-5"></i>
+                        <span id="exportText">Save Video</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-4 gap-2" id="thumbnailGrid">
+                    <!-- Thumbnails will be injected here -->
+                </div>
+            </div>
+
+            <!-- Error View -->
+            <div id="errorView"
+                class="hidden bg-red-950/30 border border-red-500/50 p-6 rounded-2xl flex items-start gap-4 text-red-400">
+                <i data-lucide="alert-circle" class="w-6 h-6 shrink-0"></i>
+                <div>
+                    <p class="font-bold text-sm">Spatial Error</p>
+                    <p id="errorMessage" class="text-xs mt-1 opacity-80"></p>
+                    <button id="errorRetryBtn" class="mt-4 text-xs font-bold underline">Re-upload Image</button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Dynamic Preview -->
+        <section class="order-1 lg:order-2">
+            <div
+                class="relative aspect-[3/4] bg-neutral-900 rounded-[3rem] overflow-hidden shadow-[0_0_120px_rgba(79,70,229,0.2)] border border-neutral-800 group">
+                <div id="previewContainer" class="w-full h-full relative">
+                    <img id="mainPreview"
+                        class="w-full h-full object-cover transition-opacity duration-500 ease-in-out opacity-0" src=""
+                        alt="Main Preview">
+
+                    <!-- Cinema HUD Overlay -->
+                    <div id="hudOverlay"
+                        class="hidden absolute inset-0 pointer-events-none p-10 flex flex-col justify-between z-10">
+                        <div class="flex justify-between items-start opacity-40">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[10px] font-black text-white tracking-[0.4em] uppercase">V-ROUND
+                                    STUDIO</span>
+                                <span class="text-[10px] font-bold text-indigo-400">MODEL_GEMINI_RECON</span>
+                            </div>
+                            <div class="w-3 h-3 border-t-2 border-r-2 border-white/40"></div>
+                        </div>
+                        <div class="flex justify-between items-end opacity-40">
+                            <div class="w-3 h-3 border-b-2 border-l-2 border-white/40"></div>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="text-[10px] font-mono text-white tracking-widest uppercase">24.0 FPS</span>
+                                <span class="text-[10px] font-mono text-emerald-500">SYNC_LOCKED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="emptyState"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-neutral-800 bg-neutral-900/50">
+                    <div
+                        class="w-24 h-24 border-4 border-dashed border-neutral-800 rounded-full flex items-center justify-center mb-6">
+                        <i data-lucide="camera" class="w-10 h-10 opacity-10"></i>
+                    </div>
+                    <p class="text-[10px] font-black tracking-[0.5em] uppercase opacity-40">Optical Ready</p>
+                </div>
+
+                <!-- Gradient Overlays -->
+                <div
+                    class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-0">
+                </div>
+                <div
+                    class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-0">
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-between items-center px-6">
+                <div class="flex gap-6">
+                    <div class="text-center">
+                        <p class="text-[10px] text-neutral-600 font-bold uppercase tracking-widest mb-1">Current</p>
+                        <p id="currentAngleText" class="text-sm font-mono text-white/80">READY</p>
+                    </div>
+                    <div class="text-center border-l border-neutral-800 pl-6">
+                        <p class="text-[10px] text-neutral-600 font-bold uppercase tracking-widest mb-1">Rotation</p>
+                        <p class="text-sm font-mono text-white/80">360° SYNC</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-neutral-600 font-bold uppercase tracking-widest mb-1">Export Ready</p>
+                    <div class="flex items-center gap-2 justify-end">
+                        <div id="statusDot" class="w-1.5 h-1.5 rounded-full bg-neutral-700"></div>
+                        <p id="statusText" class="text-xs font-mono text-neutral-500 uppercase tracking-tighter">Standby
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-24 pb-12 flex flex-col items-center gap-4 text-neutral-700">
+        <div class="flex gap-8 text-[10px] font-black tracking-[0.4em] uppercase opacity-50">
+            <span>Neural Engine</span>
+            <span>Spatial Physics</span>
+            <span>Kinetic Pose</span>
+        </div>
+        <div class="h-px w-32 bg-neutral-900"></div>
+        <p class="text-[10px] opacity-40">Automated Fashion Intelligence Turnaround Tool</p>
+    </footer>
+
+    <script>
+        // --- Configuration ---
+        // CRITICAL: Always keep secrets server-side.
+        const ANGLES = ['front', 'right', 'back', 'left'];
+
+        // --- State Management ---
+        let state = {
+            sourceImage: null,
+            isProcessing: false,
+            isExporting: false,
+            currentStep: 'upload',
+            generatedViews: { front: null, right: null, back: null, left: null },
+            activeFrame: 0,
+            isPlaying: false,
+            error: null,
+            progress: 0
+        };
+
+        // --- DOM Elements ---
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const sourcePreview = document.getElementById('sourcePreview');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+        const togglePlayBtn = document.getElementById('togglePlayBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const thumbnailGrid = document.getElementById('thumbnailGrid');
+        const mainPreview = document.getElementById('mainPreview');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const stepListItems = [
+            document.getElementById('step1'),
+            document.getElementById('step2'),
+            document.getElementById('step3')
+        ];
+
+        // --- Initialization ---
+        function init() {
+            lucide.createIcons();
+            updateUI();
+        }
+
+        // --- UI Updates ---
+        function updateUI() {
+            document.getElementById('uploadView').classList.toggle('hidden', state.currentStep !== 'upload');
+            document.getElementById('processingView').classList.toggle('hidden', state.currentStep !== 'processing');
+            document.getElementById('outputView').classList.toggle('hidden', state.currentStep !== 'preview');
+            document.getElementById('errorView').classList.toggle('hidden', !state.error);
+            resetBtn.classList.toggle('hidden', !state.sourceImage);
+
+            document.getElementById('emptyState').classList.toggle('hidden', !!state.sourceImage);
+            document.getElementById('hudOverlay').classList.toggle('hidden', state.currentStep !== 'preview');
+
+            if (state.sourceImage) {
+                sourcePreview.src = state.sourceImage;
+                sourcePreview.classList.remove('hidden');
+                uploadPrompt.classList.add('hidden');
+                processBtn.classList.remove('hidden');
+            } else {
+                sourcePreview.classList.add('hidden');
+                uploadPrompt.classList.remove('hidden');
+                processBtn.classList.add('hidden');
+            }
+
+            if (state.error) {
+                document.getElementById('errorMessage').innerText = state.error;
+            }
+
+            if (state.currentStep === 'processing') {
+                progressBar.style.width = state.progress + '%';
+                progressText.innerText = state.progress + '%';
+
+                if (state.progress > 15) {
+                    stepListItems[0].classList.add('bg-indigo-500/10', 'border-indigo-500/50', 'text-indigo-200');
+                    stepListItems[0].innerHTML = '<span>Right Profile Mapping</span> <i data-lucide="check-circle-2" class="w-4 h-4"></i>';
+                }
+                if (state.progress > 40) {
+                    stepListItems[1].classList.add('bg-indigo-500/10', 'border-indigo-500/50', 'text-indigo-200');
+                    stepListItems[1].innerHTML = '<span>Posterior Reconstruction</span> <i data-lucide="check-circle-2" class="w-4 h-4"></i>';
+                }
+                if (state.progress > 70) {
+                    stepListItems[2].classList.add('bg-indigo-500/10', 'border-indigo-500/50', 'text-indigo-200');
+                    stepListItems[2].innerHTML = '<span>Left Profile Synthesis</span> <i data-lucide="check-circle-2" class="w-4 h-4"></i>';
+                }
+                lucide.createIcons();
+            }
+
+            if (state.currentStep === 'preview') {
+                document.getElementById('statusDot').className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]";
+                document.getElementById('statusText').innerText = "Optimized";
+                document.getElementById('statusText').classList.add('text-emerald-500');
+
+                renderThumbnails();
+                updateMainPreview();
+
+                document.getElementById('playIcon').setAttribute('data-lucide', state.isPlaying ? 'pause' : 'play');
+                document.getElementById('playText').innerText = state.isPlaying ? 'Pause' : 'Preview';
+                lucide.createIcons();
+            }
+
+            if (state.isExporting) {
+                document.getElementById('exportIcon').setAttribute('data-lucide', 'loader-2');
+                document.getElementById('exportIcon').classList.add('animate-spin');
+                document.getElementById('exportText').innerText = 'Exporting...';
+                lucide.createIcons();
+            } else {
+                document.getElementById('exportIcon').setAttribute('data-lucide', 'download');
+                document.getElementById('exportIcon').classList.remove('animate-spin');
+                document.getElementById('exportText').innerText = 'Save Video';
+                lucide.createIcons();
+            }
+        }
+
+        function renderThumbnails() {
+            thumbnailGrid.innerHTML = '';
+            ANGLES.forEach((angle, i) => {
+                const btn = document.createElement('button');
+                btn.className = `aspect-square rounded-xl border-2 overflow-hidden transition-all relative ${state.activeFrame === i ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-neutral-800 opacity-30 grayscale'}`;
+                btn.onclick = () => {
+                    state.activeFrame = i;
+                    state.isPlaying = false;
+                    updateUI();
+                };
+                btn.innerHTML = `
+                    <img src="${state.generatedViews[angle]}" class="w-full h-full object-cover">
+                    <div class="absolute bottom-1 right-1 bg-black/60 text-[8px] px-1 rounded uppercase font-bold text-white/60">${angle}</div>
+                `;
+                thumbnailGrid.appendChild(btn);
+            });
+        }
+
+        function updateMainPreview() {
+            const currentAngle = ANGLES[state.activeFrame];
+            const src = state.generatedViews[currentAngle];
+            if (src) {
+                mainPreview.src = src;
+                mainPreview.classList.remove('opacity-0');
+                mainPreview.classList.add('opacity-100');
+                document.getElementById('currentAngleText').innerText = currentAngle.toUpperCase();
+            }
+        }
+
+        // --- Event Handlers ---
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    state.sourceImage = ev.target.result;
+                    state.error = null;
+                    updateUI();
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        resetBtn.onclick = () => {
+            state = {
+                ...state,
+                sourceImage: null,
+                currentStep: 'upload',
+                generatedViews: { front: null, right: null, back: null, left: null },
+                isPlaying: false,
+                progress: 0,
+                error: null
+            };
+            // Clean UI marks
+            stepListItems.forEach(item => {
+                item.classList.remove('bg-indigo-500/10', 'border-indigo-500/50', 'text-indigo-200');
+                item.innerHTML = item.innerText;
+            });
+            updateUI();
+        };
+
+        processBtn.onclick = startProcessing;
+        togglePlayBtn.onclick = () => {
+            state.isPlaying = !state.isPlaying;
+            updateUI();
+        };
+
+        document.getElementById('errorRetryBtn').onclick = () => {
+            state.error = null;
+            state.currentStep = 'upload';
+            updateUI();
+        };
+
+        // --- API & Logic ---
+        async function generateView(base64Data, prompt) {
+            const base64Content = base64Data.split(',')[1];
+            const payload = {
+                prompt: prompt,
+                inlineData: { mimeType: "image/png", data: base64Content }
+            };
+
+            const maxRetries = 5;
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            for (let i = 0; i <= maxRetries; i++) {
+                try {
+                    const response = await fetch(`/api/generate-view`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        if (i < maxRetries && response.status !== 400 && response.status !== 401 && response.status !== 403) {
+                            await new Promise(res => setTimeout(res, delays[i]));
+                            continue;
+                        }
+                        throw new Error(errorData?.error || `API Error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const generatedBase64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                    if (!generatedBase64) {
+                        if (i < maxRetries) {
+                            await new Promise(res => setTimeout(res, delays[i]));
+                            continue;
+                        }
+                        throw new Error("Safety filters triggered or model returned no image.");
+                    }
+                    return `data:image/png;base64,${generatedBase64}`;
+                } catch (err) {
+                    if (i < maxRetries) {
+                        await new Promise(res => setTimeout(res, delays[i]));
+                        continue;
+                    }
+                    throw err;
+                }
+            }
+        }
+
+        async function startProcessing() {
+            state.isProcessing = true;
+            state.currentStep = 'processing';
+            state.progress = 5;
+            state.error = null;
+            updateUI();
+
+            try {
+                // Ensure image isn't too huge to prevent entity large errors
+                state.generatedViews.front = state.sourceImage;
+                state.progress = 15;
+                updateUI();
+
+                const right = await generateView(state.sourceImage, "Generate a high-quality fashion studio photograph of the RIGHT SIDE profile of this person. They must be wearing the exact same dress, hair, and pose must be coherent with a side rotation. Clear background.");
+                state.generatedViews.right = right;
+                state.progress = 40;
+                updateUI();
+
+                const back = await generateView(state.sourceImage, "Generate a high-quality fashion studio photograph of the BACK VIEW of this person. Exact same dress, hair style must be visible from behind. Clear neutral background.");
+                state.generatedViews.back = back;
+                state.progress = 70;
+                updateUI();
+
+                const left = await generateView(state.sourceImage, "Generate a high-quality fashion studio photograph of the LEFT SIDE profile of this person. Exact same dress and person. Clear neutral background.");
+                state.generatedViews.left = left;
+                state.progress = 100;
+
+                state.currentStep = 'preview';
+                state.isPlaying = true;
+                updateUI();
+            } catch (err) {
+                console.error("Processing error:", err);
+                state.error = `Engine Error: ${err.message || "Operation failed"}. Please ensure your API key is valid and try a smaller image.`;
+                state.currentStep = 'upload';
+                updateUI();
+            } finally {
+                state.isProcessing = false;
+            }
+        }
+
+        // --- Animation Engine ---
+        setInterval(() => {
+            if (state.isPlaying && state.currentStep === 'preview') {
+                state.activeFrame = (state.activeFrame + 1) % 4;
+                updateMainPreview();
+                renderThumbnails();
+            }
+        }, 700);
+
+        // --- Export Engine ---
+        exportBtn.onclick = async () => {
+            if (state.isExporting) return;
+            state.isExporting = true;
+            updateUI();
+
+            try {
+                const canvas = document.getElementById('exportCanvas');
+                const ctx = canvas.getContext('2d');
+                const stream = canvas.captureStream(30);
+                const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                const chunks = [];
+
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `v-round-360-${Date.now()}.webm`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    state.isExporting = false;
+                    updateUI();
+                };
+
+                recorder.start();
+
+                const frameUrls = [state.generatedViews.front, state.generatedViews.right, state.generatedViews.back, state.generatedViews.left];
+                const images = await Promise.all(frameUrls.map(src => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => resolve(img);
+                        img.src = src;
+                    });
+                }));
+
+                let currentFrameCount = 0;
+                const totalFramesToRecord = 12; // 3 full loops
+
+                const recordLoop = () => {
+                    if (currentFrameCount >= totalFramesToRecord) {
+                        recorder.stop();
+                        return;
+                    }
+                    const imgIndex = currentFrameCount % 4;
+                    ctx.drawImage(images[imgIndex], 0, 0, canvas.width, canvas.height);
+                    currentFrameCount++;
+                    setTimeout(recordLoop, 400); // Faster record loop
+                };
+
+                recordLoop();
+            } catch (err) {
+                console.error("Export failed", err);
+                state.isExporting = false;
+                updateUI();
+            }
+        };
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>

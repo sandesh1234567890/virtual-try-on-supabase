@@ -168,7 +168,7 @@
 
                     <div class="absolute top-6 left-6 z-40">
                         <span id="status-chip"
-                            class="px-4 py-2 rounded-full bg-slate-900/90 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2">
+                            class="px-4 py-2 rounded-full bg-slate-900/90 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2 hidden">
                             <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                             Identity Locked
                         </span>
@@ -326,7 +326,6 @@
                     getEl('upload-panel').classList.add('hidden');
                     getEl('active-panel').classList.remove('hidden');
                     getEl('display-image').src = userImageBase64;
-                    showNotification("Identify Signal Locked");
                 };
                 reader.readAsDataURL(file);
             });
@@ -400,14 +399,14 @@
 
             tray.innerHTML = Object.entries(selections).map(([key, item]) => `
                 <div class="relative flex-shrink-0 w-16 h-16 rounded-xl border flex items-center justify-center overflow-hidden transition-all group ${item ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-dashed border-slate-700 bg-white/5'}">
-                    ${item 
-                        ? `<img src="${item.img}" class="w-full h-full object-cover">
+                    ${item
+                    ? `<img src="${item.img}" class="w-full h-full object-cover">
                            <div class="absolute inset-0 bg-orange-500/20 mix-blend-overlay"></div>
                            <button onclick="selectItem('${key}', '${item.id}')" class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <i data-lucide="x" class="text-white h-5 w-5"></i>
-                           </button>` 
-                        : `<span class="text-[8px] text-slate-600 font-black uppercase tracking-widest">${key[0]}</span>`
-                    }
+                           </button>`
+                    : `<span class="text-[8px] text-slate-600 font-black uppercase tracking-widest">${key[0]}</span>`
+                }
                 </div>
             `).join('');
             lucide.createIcons();
@@ -476,9 +475,13 @@
             getEl('synthesis-btn').disabled = true;
 
             try {
+<<<<<<< HEAD
                 // IMPORTANT: The environment injects the key at runtime.
                 const apiKey = "";
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`;
+=======
+                const url = `/api/combo-try-on`;
+>>>>>>> 1d2470f (security: remove hardcoded AI keys and implement server-side proxies)
 
                 let mappingInstructions = "";
                 if (selections.dresses) {
@@ -495,7 +498,7 @@
                     `;
                 }
 
-                const prompt = `Virtual Try-On Fashion Task:
+                const synthesisPrompt = `Virtual Try-On Fashion Task:
                 Perform a high-fidelity neural synthesis by applying the following combo onto the person in the provided photo: ${activeCombo.join(', ')}.
                 
                 Neural Layering Instructions:
@@ -505,7 +508,7 @@
                 - PRESERVE the exact face, pose, and original background from the user source photo.
                 - Output only the final synthesized high-resolution image result.`;
 
-                const imageParts = [{ inlineData: { mimeType: "image/jpeg", data: userImageBase64.split(',')[1] } }];
+                const images = [userImageBase64.split(',')[1]];
 
                 // Fetch and add garment images
                 for (const [key, item] of Object.entries(selections)) {
@@ -513,19 +516,14 @@
                         showNotification(`Fetching ${item.name}...`);
                         const b64 = await urlToBase64(item.img);
                         if (b64) {
-                            imageParts.push({ inlineData: { mimeType: "image/jpeg", data: b64 } });
+                            images.push(b64);
                         }
                     }
                 }
 
                 const payload = {
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            ...imageParts
-                        ]
-                    }],
-                    generationConfig: { responseModalities: ["IMAGE"] }
+                    prompt: synthesisPrompt,
+                    images: images
                 };
 
                 const response = await fetchWithRetry(url, {
@@ -536,14 +534,15 @@
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `API Error: ${response.status}`);
+                    throw new Error(errData.error || `API Error: ${response.status}`);
                 }
 
                 const result = await response.json();
-                const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inline_data || p.inlineData);
 
-                if (imagePart?.inlineData?.data) {
-                    getEl('display-image').src = `data:image/png;base64,${imagePart.inlineData.data}`;
+                if (imagePart?.inline_data?.data || imagePart?.inlineData?.data) {
+                    const base64Data = imagePart.inline_data?.data || imagePart.inlineData?.data;
+                    getEl('display-image').src = `data:image/png;base64,${base64Data}`;
                     showNotification("Combo Synthesized Successfully");
                 } else {
                     const textRefusal = result.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;

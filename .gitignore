@@ -55,3 +55,5 @@ prisma_output.txt
 setup_env_*.js
 setup_rest.js
 test_*.js
+
+.vercel
