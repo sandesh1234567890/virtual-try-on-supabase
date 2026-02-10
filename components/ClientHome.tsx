@@ -6,7 +6,7 @@ import ProductCard from "@/components/ProductCard";
 import Navbar from "@/components/Navbar";
 import TryOnGenerator from "@/components/TryOnGenerator";
 import { Product } from "@/lib/products";
-import { ArrowRight, Sparkles, ShoppingBag, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, ShoppingBag, Zap, Video } from 'lucide-react';
 
 interface ClientHomeProps {
     products: Product[];
@@ -51,11 +51,18 @@ export default function ClientHome({ products, categories, activeCategory }: Cli
                             Explore Collection <ArrowRight size={18} />
                         </a>
                         <Link
-                            href="/2.html"
-                            className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-full font-bold hover:scale-105 transition-all flex items-center gap-2 shadow-xl shadow-orange-500/20"
+                            href="/dragon"
+                            className="px-8 py-4 bg-gradient-to-r from-orange-600 to-red-700 text-white rounded-full font-bold hover:scale-105 transition-all flex items-center gap-2 shadow-xl shadow-orange-500/20"
                         >
                             <Zap size={18} className="fill-white" />
-                            Combo Studio <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded uppercase tracking-widest">Premium+</span>
+                            Combo Studio <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded uppercase tracking-widest">PRO</span>
+                        </Link>
+                        <Link
+                            href="/v-round"
+                            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-700 text-white rounded-full font-bold hover:scale-105 transition-all flex items-center gap-2 shadow-xl shadow-indigo-500/20"
+                        >
+                            <Video size={18} className="text-white" />
+                            360° Studio <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded uppercase tracking-widest">PRO</span>
                         </Link>
                         <button
                             onClick={() => setIsCustomTryOnOpen(true)}

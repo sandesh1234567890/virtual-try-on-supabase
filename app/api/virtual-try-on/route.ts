@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${API_KEY}`;
+const MODEL_NAME = "gemini-2.5-flash-image";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
 async function prepareImage(buffer: Buffer, mimeType: string): Promise<{ data: string, mimeType: string }> {
     // Gemini supports jpeg, png, webp, heic, heif. It does NOT support avif.
@@ -76,25 +77,25 @@ IMAGE 1 DESCRIPTION: A photo of a person.
 IMAGE 2 DESCRIPTION: ${productName}.
 
 INSTRUCTIONS:
-1. Identify the person in IMAGE 1.
-2. Replace their current clothes with the ${productName} shown in IMAGE 2.
-3. The ${productName} must be naturally draped over the person's body, matching their pose and proportions.
-4. ABSOLUTELY PRESERVE the person's face, hair, skin tone, and body shape from IMAGE 1.
-5. ABSOLUTELY PRESERVE the entire background and environment from IMAGE 1.
-6. The final output must be a single image of the person from IMAGE 1 wearing the ${productName}.
-
-IMPORTANT: DO NOT return the original image 1. You MUST modify the clothing.`;
+1. IDENTIFY LOCK: You MUST use the EXACT pixels for the face, hair, and skin from IMAGE 1. Any alteration to facial features, eyes, nose, mouth, or skin tone is a CRITICAL FAILURE.
+2. FROZEN POSE: Maintain the EXACT anatomical structure, body shape, and pose from IMAGE 1. The person must not change size or stance.
+3. Replace their current clothes with the EXACT garment shown in IMAGE 2.
+4. **CRITICAL VISUAL FIDELITY**: Match the MATERIAL (e.g., silk, leather, denim), TEXTURE (e.g., mesh, knit, shiny), PATTERNS, and LOGOS exactly as they appear in IMAGE 2.
+5. If the product name ("${productName}") conflicts with visual details in IMAGE 2, IGNORE the name and follow the visual image.
+6. The garment must be naturally draped over the person's body from IMAGE 1.
+7. ABSOLUTELY PRESERVE the entire background and environment from IMAGE 1.
+8. The final output must be a single image of the person from IMAGE 1 wearing the specific garment from IMAGE 2.`;
 
         const payload = {
             contents: [{
                 parts: [
-                    { inline_data: { mime_type: userMime, data: userBase64 } },
-                    { inline_data: { mime_type: garmentMimeType, data: garmentBase64 } },
+                    { inlineData: { mimeType: userMime, data: userBase64 } },
+                    { inlineData: { mimeType: garmentMimeType, data: garmentBase64 } },
                     { text: promptText }
                 ]
             }],
             generationConfig: {
-                response_modalities: ['IMAGE']
+                responseModalities: ['IMAGE']
             }
         };
 
@@ -124,10 +125,10 @@ IMPORTANT: DO NOT return the original image 1. You MUST modify the clothing.`;
             return NextResponse.json({ error: "Failed to generate image" }, { status: response.status });
         }
 
-        const part = result?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData || p.inline_data);
-        const imageData = part?.inlineData || part?.inline_data;
+        const part = result?.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+        const imageData = part?.inlineData;
         const base64Data = imageData?.data;
-        const mimeType = imageData?.mimeType || imageData?.mime_type || 'image/png';
+        const mimeType = imageData?.mimeType || 'image/png';
 
         if (!base64Data) {
             console.warn("POST /api/virtual-try-on: No image data in Gemini response");

@@ -168,7 +168,7 @@
 
                     <div class="absolute top-6 left-6 z-40">
                         <span id="status-chip"
-                            class="px-4 py-2 rounded-full bg-slate-900/90 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2 hidden">
+                            class="px-4 py-2 rounded-full bg-slate-900/90 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                             Identity Locked
                         </span>
@@ -199,86 +199,59 @@
             </div>
         </div>
 
-        <!-- SELECTION PANEL -->
+        <!-- SELECTION -->
         <div class="w-full lg:w-5/12 order-2 lg:order-1 flex flex-col gap-6">
-
-            <!-- Custom Try-On Cart Design -->
             <div
-                class="relative bg-slate-900/40 border border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-2xl flex-1 flex flex-col shadow-2xl group overflow-hidden">
-
-                <!-- Gradient Glow Effect -->
-                <div
-                    class="absolute -top-24 -right-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-orange-500/30 transition-all duration-1000">
-                </div>
-
-                <div class="relative flex items-center justify-between mb-8">
-                    <div class="flex flex-col gap-1">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="layers" class="text-orange-500 h-5 w-5"></i>
-                            <h2 class="text-xl font-black brand-font italic uppercase text-white tracking-wide">
-                                Custom Loadout
-                            </h2>
-                        </div>
-                        <p class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold pl-7">Neural Wardrobe
-                            Sytem</p>
+                class="bg-slate-900/30 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl flex-1 flex flex-col shadow-2xl">
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-black brand-font italic uppercase text-white text-center sm:text-left">
+                            Wardrobe Combo</h2>
+                        <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black mt-1">Multi-Category
+                            Selection</p>
                     </div>
                     <button onclick="clearSelections()"
-                        class="text-[9px] font-black uppercase text-slate-500 hover:text-white hover:bg-red-500/20 transition-all border border-slate-800 hover:border-red-500/50 px-4 py-2 rounded-full flex items-center gap-2">
-                        <i data-lucide="trash-2" class="h-3 w-3"></i> Reset
-                    </button>
+                        class="text-[9px] font-black uppercase text-slate-500 hover:text-orange-500 transition-all border border-slate-800 px-3 py-1.5 rounded-lg">Reset</button>
                 </div>
 
-                <!-- Category Tabs -->
-                <div class="flex p-1.5 bg-black/40 rounded-2xl mb-6 border border-white/5 backdrop-blur-md">
+                <!-- Tabs -->
+                <div class="flex p-1 bg-slate-950 rounded-2xl mb-6 border border-slate-800/50">
                     <button onclick="switchCategory('tops')" id="cat-tops"
-                        class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all bg-gradient-to-b from-slate-800 to-slate-900 text-orange-400 shadow-lg border border-white/5 flex flex-col items-center gap-1">
-                        <i data-lucide="shirt" class="h-4 w-4 mb-1"></i> Tops
-                    </button>
+                        class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-orange-400">Tops</button>
                     <button onclick="switchCategory('bottoms')" id="cat-bottoms"
-                        class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500 hover:text-white flex flex-col items-center gap-1">
-                        <i data-lucide="scissors" class="h-4 w-4 mb-1"></i> Bottoms
-                    </button>
+                        class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500">Bottoms</button>
                     <button onclick="switchCategory('shoes')" id="cat-shoes"
-                        class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500 hover:text-white flex flex-col items-center gap-1">
-                        <i data-lucide="footprints" class="h-4 w-4 mb-1"></i> Kicks
-                    </button>
+                        class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500">Kicks</button>
                 </div>
 
                 <!-- Product Grid -->
                 <div id="grid-content"
-                    class="grid grid-cols-2 gap-4 h-[300px] lg:h-[350px] overflow-y-auto pr-2 custom-scrollbar pb-4">
+                    class="grid grid-cols-2 gap-4 h-[300px] lg:h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     <!-- Loaded via JS -->
                 </div>
 
-                <!-- Enhanced Neural Tray -->
-                <div class="mt-auto pt-6 border-t border-white/5">
-                    <div class="flex justify-between items-end mb-4">
-                        <div class="flex flex-col">
-                            <h3 class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Fabric
-                                Buffer</h3>
-                            <div class="h-0.5 w-12 bg-orange-500 rounded-full"></div>
-                        </div>
+                <!-- Neural Tray -->
+                <div class="mt-6 pt-6 border-t border-slate-800/50">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Active Buffer</h3>
                         <span id="combo-count"
-                            class="text-[9px] font-bold text-black bg-orange-500 px-3 py-1 rounded-full uppercase tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.4)]">
-                            0 / 3 Active
-                        </span>
+                            class="text-[9px] font-bold text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-md uppercase">0
+                            Selected</span>
                     </div>
-                    <div class="flex gap-3 p-3 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-lg justify-start overflow-x-auto"
-                        id="buffer-tray">
+                    <div class="flex gap-3" id="buffer-tray">
                         <!-- Combo slots -->
                     </div>
                 </div>
             </div>
 
-            <!-- Ignite Button -->
+            <!-- Synthesis Button -->
             <button id="synthesis-btn" onclick="handleGenerate()"
-                class="relative w-full py-6 rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] transition-all duration-300 overflow-hidden group btn-gradient shadow-[0_10px_40px_-10px_rgba(249,115,22,0.5)] hover:shadow-[0_20px_60px_-10px_rgba(249,115,22,0.7)] active:scale-95 border border-white/10">
-                <span
-                    class="relative z-10 flex items-center justify-center gap-4 text-white group-hover:tracking-[0.4em] transition-all">
-                    <i data-lucide="zap" class="h-6 w-6 animate-pulse"></i> Ignite Combo
+                class="relative w-full py-6 rounded-[2rem] font-black text-lg uppercase tracking-[0.3em] transition-all duration-500 overflow-hidden group btn-gradient shadow-2xl active:scale-95">
+                <span class="relative z-10 flex items-center justify-center gap-3 text-white">
+                    <i data-lucide="sparkles" class="h-5 w-5"></i> Ignite Combo
                 </span>
                 <div
-                    class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out">
+                    class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
                 </div>
             </button>
         </div>
@@ -326,6 +299,7 @@
                     getEl('upload-panel').classList.add('hidden');
                     getEl('active-panel').classList.remove('hidden');
                     getEl('display-image').src = userImageBase64;
+                    showNotification("Identify Signal Locked");
                 };
                 reader.readAsDataURL(file);
             });
@@ -347,23 +321,15 @@
 
         function switchCategory(cat) {
             currentCategory = cat;
-            const icons = { tops: 'shirt', bottoms: 'scissors', shoes: 'footprints', dresses: 'stars' };
-            const labels = { tops: 'Tops', bottoms: 'Bottoms', shoes: 'Kicks', dresses: 'Dresses' };
-
-            ['tops', 'bottoms', 'shoes', 'dresses'].forEach(c => {
+            ['tops', 'bottoms', 'shoes'].forEach(c => {
                 const btn = getEl(`cat-${c}`);
                 if (btn) {
-                    const isActive = c === cat;
-                    btn.className = isActive
-                        ? 'flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all bg-gradient-to-b from-slate-800 to-slate-900 text-orange-400 shadow-lg border border-white/5 flex flex-col items-center gap-1 scale-105'
-                        : 'flex-1 py-4 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500 hover:text-white flex flex-col items-center gap-1 hover:bg-white/5';
-
-                    // Simple re-render of content to ensure icons persist
-                    btn.innerHTML = `<i data-lucide="${icons[c]}" class="h-4 w-4 mb-1"></i> ${labels[c]}`;
+                    btn.className = c === cat
+                        ? 'flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all bg-slate-800 text-orange-400 shadow-lg'
+                        : 'flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all text-slate-500';
                 }
             });
             renderGrid();
-            lucide.createIcons();
         }
 
         function renderGrid() {
@@ -395,21 +361,13 @@
         function updateBuffer() {
             const tray = getEl('buffer-tray');
             const total = Object.values(selections).filter(Boolean).length;
-            getEl('combo-count').textContent = `${total} / 3 Active`;
+            getEl('combo-count').textContent = `${total} Items Selected`;
 
             tray.innerHTML = Object.entries(selections).map(([key, item]) => `
-                <div class="relative flex-shrink-0 w-16 h-16 rounded-xl border flex items-center justify-center overflow-hidden transition-all group ${item ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-dashed border-slate-700 bg-white/5'}">
-                    ${item
-                    ? `<img src="${item.img}" class="w-full h-full object-cover">
-                           <div class="absolute inset-0 bg-orange-500/20 mix-blend-overlay"></div>
-                           <button onclick="selectItem('${key}', '${item.id}')" class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i data-lucide="x" class="text-white h-5 w-5"></i>
-                           </button>`
-                    : `<span class="text-[8px] text-slate-600 font-black uppercase tracking-widest">${key[0]}</span>`
-                }
+                <div class="flex-shrink-0 w-14 h-14 rounded-xl border flex items-center justify-center overflow-hidden transition-all ${item ? 'border-orange-500 bg-slate-900 shadow-xl' : 'border-dashed border-slate-800 bg-slate-950/20'}">
+                    ${item ? `<img src="${item.img}" class="w-full h-full object-cover">` : `<span class="text-[8px] text-slate-700 font-black uppercase">${key[0]}</span>`}
                 </div>
             `).join('');
-            lucide.createIcons();
         }
 
         function clearSelections() {
@@ -475,35 +433,23 @@
             getEl('synthesis-btn').disabled = true;
 
             try {
-                const apiKey = ""; // CLEARED FOR SECURITY
+                // IMPORTANT: The environment injects the key at runtime.
+                const apiKey = "AIzaSyDg_4bf8eTfCrv9G1MvCRbI6qXBiq2LSd4";
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`;
 
-                let mappingInstructions = "";
-                if (selections.dresses) {
-                    mappingInstructions = `
-                    1. FULL BODY: Map the DRESS garment onto the person's body, fitting the torso and flowing down the legs.
-                    2. FEET: Replace footwear with selected SHOES (if any).
-                    3. IGNORE: Do not apply separate TOPS or BOTTOMS if a DRESS is present.
-                    `;
-                } else {
-                    mappingInstructions = `
-                    1. TORSO: Map the TOP garment (if selected) onto the body torso. Ensure it layers naturally over the waistband.
-                    2. LEGS: Map the BOTTOM garment (if selected) onto the legs. Ensure the hem falls realistically over the footwear.
-                    3. FEET: Replace footwear with selected SHOES (if selected).
-                    `;
-                }
-
-                const synthesisPrompt = `Virtual Try-On Fashion Task:
+                const prompt = `Virtual Try-On Fashion Task:
                 Perform a high-fidelity neural synthesis by applying the following combo onto the person in the provided photo: ${activeCombo.join(', ')}.
                 
                 Neural Layering Instructions:
-                ${mappingInstructions}
+                1. TORSO: Map the TOP garment onto the body torso. Ensure it layers naturally over the waistband (tucked or untucked based on style).
+                2. LEGS: Map the BOTTOM garment onto the legs. Ensure the hem falls realistically over the footwear.
+                3. FEET: Replace footwear with selected SHOES.
                 
                 CONSTRAINTS:
                 - PRESERVE the exact face, pose, and original background from the user source photo.
                 - Output only the final synthesized high-resolution image result.`;
 
-                const images = [userImageBase64.split(',')[1]];
+                const imageParts = [{ inlineData: { mimeType: "image/jpeg", data: userImageBase64.split(',')[1] } }];
 
                 // Fetch and add garment images
                 for (const [key, item] of Object.entries(selections)) {
@@ -511,14 +457,19 @@
                         showNotification(`Fetching ${item.name}...`);
                         const b64 = await urlToBase64(item.img);
                         if (b64) {
-                            images.push(b64);
+                            imageParts.push({ inlineData: { mimeType: "image/jpeg", data: b64 } });
                         }
                     }
                 }
 
                 const payload = {
-                    prompt: synthesisPrompt,
-                    images: images
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            ...imageParts
+                        ]
+                    }],
+                    generationConfig: { responseModalities: ["IMAGE"] }
                 };
 
                 const response = await fetchWithRetry(url, {
@@ -529,15 +480,14 @@
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error || `API Error: ${response.status}`);
+                    throw new Error(errData.error?.message || `API Error: ${response.status}`);
                 }
 
                 const result = await response.json();
-                const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inline_data || p.inlineData);
+                const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
 
-                if (imagePart?.inline_data?.data || imagePart?.inlineData?.data) {
-                    const base64Data = imagePart.inline_data?.data || imagePart.inlineData?.data;
-                    getEl('display-image').src = `data:image/png;base64,${base64Data}`;
+                if (imagePart?.inlineData?.data) {
+                    getEl('display-image').src = `data:image/png;base64,${imagePart.inlineData.data}`;
                     showNotification("Combo Synthesized Successfully");
                 } else {
                     const textRefusal = result.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;

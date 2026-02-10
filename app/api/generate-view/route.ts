@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_NAME = "gemini-1.5-flash"; // Or whatever model you want to use for 360 turnarounds
+const MODEL_NAME = "gemini-2.0-flash-exp-image-generation";
 
 export async function POST(request: NextRequest) {
     try {
