@@ -1,0 +1,27 @@
+1) Problem Statement
+   - Users encounter a "Failed to fetch" error when clicking "Initiate Try-On" in the Virtual Try-On application.
+   - This error typically indicates a failure to communicate with the backend API route `/api/virtual-try-on`.
+   - The user interface (TryOnGenerator.tsx) correctly sends a POST request with image data, but the request fails or is rejected before a response is received.
+
+2) Solution
+   Based on the code analysis:
+   - The API route structure is correct (`app/api/virtual-try-on/route.ts`).
+   - The implementation uses the Gemini API (`gemini-2.5-flash-image`) and `sharp` for image processing.
+
+   Required Steps for Fix:
+   a. Environment Configuration:
+      - Ensure a `.env` file exists in the project root (`virtual-try-on-supabase`).
+      - It MUST contain a valid `GEMINI_API_KEY`.
+        Example: `GEMINI_API_KEY=AIzaSy...`
+
+   b. Dependency Installation:
+      - The API relies on `sharp` for image resizing. Ensure it is installed.
+      - Run: `npm install` (or specifically `npm install sharp`).
+
+   c. Server Execution:
+      - ensure the development server is running on the expected port (usually 3000).
+      - Run: `npm run dev`.
+
+   d. Verification:
+      - Check the server console logs for startup errors.
+      - Check browser console (Network tab) for the specific HTTP status code (e.g., 500 Internal Server Error vs 404 Not Found).

@@ -57,3 +57,7 @@ setup_rest.js
 test_*.js
 
 .vercel
+
+# Zip archives and temporary directories
+*.zip
+vi/

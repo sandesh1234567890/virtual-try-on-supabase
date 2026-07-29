@@ -20,8 +20,12 @@ model Product {
 }
 
 model TryOnStats {
-  id        String   @id @default(cuid())
-  productId String
-  timestamp DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id])
+  id          String   @id @default(cuid())
+  productId   String?
+  userId      String?
+  outputImage String?
+  timestamp   DateTime @default(now())
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([userId])
 }

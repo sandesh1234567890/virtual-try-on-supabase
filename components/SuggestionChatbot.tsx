@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Send, X, Bot, User, Sparkles, Check, ShoppingBag, Plus, Image as ImageIcon, Shirt } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -12,359 +14,284 @@ function cn(...inputs: ClassValue[]) {
 interface Message {
     role: 'user' | 'assistant';
     content: string;
-    suggestions?: {
-        tops?: string[] | null;
-        pants?: string[] | null;
-        shoes?: string[] | null;
-    };
+    suggestions?: any;
+    tryOnResult?: string;
 }
 
-const PRODUCTS_MAP: Record<string, any> = {
-    't1': { id: 't1', name: 'Midnight Dragon Tee (Black)', img: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=400', cat: 'tops' },
-    't2': { id: 't2', name: 'Crimson Tech Hoodie (Red)', img: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=400', cat: 'tops' },
-    't3': { id: 't3', name: 'Imperial Oxford (White)', img: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=400', cat: 'tops' },
-    't4': { id: 't4', name: 'Cyber Mesh (Grey)', img: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&q=80&w=400', cat: 'tops' },
-    'b1': { id: 'b1', name: 'Cargo Tech Pants (Black)', img: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&q=80&w=400', cat: 'bottoms' },
-    'b2': { id: 'b2', name: 'Architecture Denim (Blue)', img: 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?auto=format&fit=crop&q=80&w=400', cat: 'bottoms' },
-    'b3': { id: 'b3', name: 'Stealth Slacks (Grey)', img: 'https://images.unsplash.com/photo-1551488852-081bd4c9028c?auto=format&fit=crop&q=80&w=400', cat: 'bottoms' },
-    's1': { id: 's1', name: 'Talon Lows (Black)', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=400', cat: 'shoes' },
-    's2': { id: 's2', name: 'Pulse Runners (White)', img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&q=80&w=400', cat: 'shoes' },
-    's3': { id: 's3', name: 'Scale-Lock Boots (Brown)', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=400', cat: 'shoes' },
-};
-
-export default function SuggestionChatbot({ onSelect }: { onSelect?: (cat: string, item: any) => void }) {
+export default function SuggestionChatbot() {
+    const router = useRouter();
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: "Hello! I'm your Dragon Studio personal stylist. What occasion are you dressing for today? (e.g., Casual hangout, Cyberpunk party, Minimalist work day)" }
+        { role: 'assistant', content: "Welcome to the future of fashion. I am the AI Fashion Architect. How can I curate your style journey today?" }
     ]);
     const [input, setInput] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [productsMap, setProductsMap] = useState<Record<string, any>>({});
+    
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // FIXED NAVIGATION MAPPING
+    const VIEW_MAP: Record<string, string> = {
+        'home': '/',
+        'catalog': '/', // Catalog is the home page in this app
+        'studio': '/dragon',
+        'vround': '/v-round',
+        'v-round': '/v-round'
+    };
+
+    // Fetch products to populate the map for suggestions
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await fetch('/api/products');
+                if (res.ok) {
+                    const data = await res.json();
+                    const map: Record<string, any> = {};
+                    data.forEach((p: any) => {
+                        map[p.id] = { id: p.id, name: p.name, img: p.image, cat: p.category };
+                    });
+                    setProductsMap(map);
+                }
+            } catch (err) {
+                console.error("Failed to fetch products for architect:", err);
+            }
+        };
+        fetchProducts();
+    }, []);
+
+    // Auto-scroll
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages, isTyping]);
+    }, [messages, isLoading]);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    const handleSend = async (overrideInput?: string) => {
+        const textToSend = overrideInput || input;
+        if (!textToSend.trim() || isLoading) return;
 
-        const userMsg: Message = { role: 'user', content: input };
+        const userMsg: Message = { role: 'user', content: textToSend };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
-        setIsTyping(true);
+        setIsLoading(true);
 
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: messages.concat(userMsg).map(m => ({ role: m.role, content: m.content })),
-                    image: selectedImage
+                    messages: messages.concat(userMsg).map(m => ({ role: m.role, content: m.content }))
                 })
             });
-
-            // Clear image after sending
-            setSelectedImage(null);
 
             const data = await response.json();
             if (data.error) throw new Error(data.error);
 
-            const aiContent = data.choices[0].message.content;
+            let aiContent = data.choices?.[0]?.message?.content || "Information stream interrupted. Please retry.";
 
-            // Extract suggestions
-            const suggestionMatch = aiContent.match(/\[\[SUGGESTIONS: (.*?)\]\]/);
+            // 1. Navigation Parser
+            const navMatch = aiContent.match(/\[\[NAVIGATE: (.*?)\]\]/);
+            if (navMatch) {
+                const viewName = navMatch[1].trim().toLowerCase();
+                const targetPath = VIEW_MAP[viewName] || viewName;
+                
+                // Strip tag from UI
+                aiContent = aiContent.replace(/\[\[NAVIGATE: (.*?)\]\]/g, '').trim();
+
+                setTimeout(() => {
+                    if (pathname !== targetPath) {
+                        router.push(targetPath);
+                    }
+                }, 1500);
+            }
+
+            // 2. Suggestions Parser
+            const suggestionMatch = aiContent.match(/\[\[SUGGESTIONS:?\s*({[\s\S]*?})\s*\]\]/i);
             let suggestions = null;
-            let cleanContent = aiContent;
-
             if (suggestionMatch) {
                 try {
-                    suggestions = JSON.parse(suggestionMatch[1]);
-                    cleanContent = aiContent.replace(/\[\[SUGGESTIONS: (.*?)\]\]/, '').trim();
+                    suggestions = JSON.parse(suggestionMatch[1].trim());
+                    aiContent = aiContent.replace(/\[\[SUGGESTIONS:?\s*({[\s\S]*?})\s*\]\]/gi, '').trim();
                 } catch (e) {
-                    console.error("Failed to parse suggestions", e);
+                    console.error("Suggestions parse error", e);
                 }
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', content: cleanContent, suggestions }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: aiContent, suggestions }]);
         } catch (error: any) {
-            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message}. Please make sure your OpenAI API key is configured.` }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: `Neural Link Error: ${error.message}. Checking synapse integrity...` }]);
         } finally {
-            setIsTyping(false);
+            setIsLoading(false);
         }
     };
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setSelectedImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const actionChips = [
-        { label: "Suggest Outfit", icon: <Shirt className="w-3 h-3" /> },
-        { label: "Cyberpunk Vibe", icon: <Sparkles className="w-3 h-3" /> },
-        { label: "Casual Look", icon: <ShoppingBag className="w-3 h-3" /> },
-    ];
 
     return (
-        <div className="fixed bottom-6 right-6 z-[60]">
-            <style dangerouslySetInnerHTML={{
-                __html: `
+        <div className="fixed bottom-6 right-6 z-[100] font-sans">
+            <style dangerouslySetInnerHTML={{ __html: `
                 .custom-scrollbar::-webkit-scrollbar {
-                    width: 5px;
+                    width: 6px;
+                    height: 6px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
+                    background: rgba(99, 102, 241, 0.05);
+                    border-radius: 10px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(249, 115, 22, 0.3);
-                    border-radius: 20px;
+                    background: #6366f1 !important;
+                    border-radius: 10px;
+                    border: 2px solid rgba(0, 0, 0, 0.1);
+                    min-height: 40px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(249, 115, 22, 0.5);
-                }
-                .no-scrollbar::-webkit-scrollbar {
-                    display: none;
-                }
-                .no-scrollbar {
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
+                    background: #4f46e5 !important;
                 }
             `}} />
-            {/* Chat Window */}
-            <div className={cn(
-                "absolute bottom-20 right-0 w-[calc(100vw-3rem)] sm:w-[380px] h-[550px] bg-slate-950/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] overflow-hidden transition-all duration-500 origin-bottom-right shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] flex flex-col",
-                isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-10 pointer-events-none"
-            )}>
-                {/* Header */}
-                <div className="p-6 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-b border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center border border-orange-500/20">
-                            <Sparkles className="w-6 h-6 text-orange-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold brand-font tracking-wider">Dragon Stylist</h3>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">Neural Logic Active</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setIsOpen(false)}
-                        className="p-2 hover:bg-white/5 rounded-full transition-colors"
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        className="absolute bottom-20 right-0 w-[92vw] sm:w-[420px] h-[600px] max-h-[85vh] liquid-glass flex flex-col shadow-2xl shadow-indigo-500/20 border border-white/10"
                     >
-                        <X className="w-5 h-5 text-slate-400" />
-                    </button>
-                </div>
+                        {/* Scanning Bar Animation */}
+                        {isLoading && <div className="scanning-bar" />}
 
-                {/* Messages Area */}
-                <div
-                    ref={scrollRef}
-                    className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth min-h-0"
-                >
-                    {messages.map((msg, idx) => (
-                        <div key={idx} className={cn(
-                            "flex flex-col",
-                            msg.role === 'user' ? "items-end" : "items-start"
-                        )}>
-                            <div className={cn(
-                                "max-w-[85%] p-4 text-[13px] leading-relaxed shadow-lg whitespace-pre-wrap",
-                                msg.role === 'user'
-                                    ? "bg-orange-500 text-white rounded-2xl rounded-tr-none"
-                                    : "bg-slate-900/50 border border-white/5 text-slate-300 rounded-2xl rounded-tl-none font-medium"
-                            )}>
-                                {msg.content.replace(/\*\*/g, '')}
-                            </div>
-
-                            {/* User-uploaded image in chat */}
-                            {msg.role === 'user' && idx === messages.length - 1 && selectedImage && (
-                                <div className="mt-2 relative group w-24 h-24 rounded-xl overflow-hidden border border-white/10">
-                                    <img src={selectedImage} className="w-full h-full object-cover" />
+                        {/* Header */}
+                        <div className="p-5 border-b border-indigo-500/10 flex items-center justify-between bg-black/40 backdrop-blur-md">
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-neural-pulse shadow-[0_0_8px_#6366f1]" />
                                 </div>
-                            )}
+                                <div>
+                                    <h3 className="text-sm font-bold text-white tracking-widest uppercase">Fashion Architect</h3>
+                                    <p className="text-[10px] text-indigo-400 font-medium tracking-tight">Neural Synapse Active</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setIsOpen(false)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-indigo-300"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
 
-                            {/* Suggestions Cards - Multi-Grid Layout */}
-                            {msg.suggestions && (
-                                <div className="mt-4 grid grid-cols-1 gap-2 w-full">
-                                    {Object.entries(msg.suggestions).map(([cat, ids]) => {
-                                        if (!ids || !Array.isArray(ids)) return null;
+                        {/* Messages Area */}
+                        <div 
+                            ref={scrollRef}
+                            className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.05),transparent)] scroll-smooth"
+                        >
+                            {messages.map((msg, i) => (
+                                <motion.div
+                                    initial={{ opacity: 0, x: msg.role === 'user' ? 10 : -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    key={i}
+                                    className={cn(
+                                        "flex flex-col",
+                                        msg.role === 'user' ? "items-end" : "items-start"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "max-w-[88%] p-3.5 text-[13.5px] leading-relaxed",
+                                        msg.role === 'user'
+                                            ? "bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-indigo-600/30 font-medium"
+                                            : "bg-white/10 border border-white/10 text-indigo-50 rounded-2xl rounded-tl-none backdrop-blur-sm shadow-md"
+                                    )}>
+                                        {msg.content}
+                                    </div>
 
-                                        return ids.map(id => {
-                                            const product = PRODUCTS_MAP[id];
-                                            if (!product) return null;
-
-                                            return (
-                                                <div
-                                                    key={id}
-                                                    className="bg-slate-900/80 border border-white/10 rounded-2xl p-2.5 flex items-center gap-3 group hover:border-orange-500/30 transition-all duration-300"
-                                                >
-                                                    <div className="w-16 h-20 relative shrink-0">
-                                                        <img
-                                                            src={product.img}
-                                                            className="w-full h-full object-cover rounded-xl"
-                                                            alt={product.name}
-                                                        />
-                                                        <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-xl"></div>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[9px] font-black uppercase tracking-widest text-orange-500/80 leading-none mb-1.5">
-                                                            {cat === 'bottoms' || cat === 'pants' ? 'PANT' : cat === 'shoes' ? 'SHOES' : 'TOP'}
-                                                        </p>
-                                                        <p className="text-[12px] font-bold text-white truncate leading-tight">{product.name}</p>
-                                                        <p className="text-[10px] text-slate-500 mt-1">Neural Style Match</p>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (onSelect) onSelect(product.cat, product);
-                                                            window.dispatchEvent(new CustomEvent('dragon-select', {
-                                                                detail: { cat: product.cat, item: product }
-                                                            }));
-                                                        }}
-                                                        className="p-2 bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white rounded-xl transition-all border border-orange-500/20"
-                                                    >
-                                                        <Check className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            );
-                                        });
-                                    })}
-
-                                    <button
-                                        onClick={() => {
-                                            Object.entries(msg.suggestions!).forEach(([_, ids]) => {
-                                                if (ids && Array.isArray(ids)) {
-                                                    ids.forEach(id => {
-                                                        const p = PRODUCTS_MAP[id];
-                                                        if (p) {
-                                                            if (onSelect) onSelect(p.cat, p);
-                                                            window.dispatchEvent(new CustomEvent('dragon-select', {
-                                                                detail: { cat: p.cat, item: p }
-                                                            }));
-                                                        }
-                                                    });
-                                                }
-                                            });
-                                        }}
-                                        className="w-full mt-1 py-3 bg-white text-black hover:bg-orange-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/50"
-                                    >
-                                        <Sparkles className="w-4 h-4" />
-                                        Sync Full Intent Look
-                                    </button>
+                                    {/* Suggestion Cards */}
+                                    {msg.suggestions && (
+                                        <div className="mt-3 grid grid-cols-1 gap-2 w-full max-w-[90%]">
+                                            {Object.entries(msg.suggestions).map(([cat, ids]) => {
+                                                if (!Array.isArray(ids)) return null;
+                                                return ids.map(id => {
+                                                    const product = productsMap[id];
+                                                    if (!product) return null;
+                                                    return (
+                                                        <div key={id} className="flex items-center gap-3 p-2.5 bg-black/60 border border-white/10 rounded-xl hover:border-indigo-500/40 transition-all group overflow-hidden">
+                                                            <div className="w-14 h-16 bg-white/5 rounded-lg overflow-hidden shrink-0 border border-white/5">
+                                                                <img src={product.img} className="w-full h-full object-cover" alt={product.name} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[11px] text-white font-bold truncate leading-tight">{product.name}</p>
+                                                                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest mt-1 opacity-80">{cat}</p>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    window.dispatchEvent(new CustomEvent('dragon-select', { detail: { cat: product.cat, item: product } }));
+                                                                }}
+                                                                className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition-all shadow-sm"
+                                                            >
+                                                                <Plus size={16} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                });
+                                            })}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            ))}
+                            {isLoading && (
+                                <div className="text-[11px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse flex items-center gap-2">
+                                    <Bot size={14} className="animate-bounce" />
+                                    Synthesizing Style...
                                 </div>
                             )}
                         </div>
-                    ))}
-                    {isTyping && (
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Sparkles className="w-4 h-4 text-orange-500/50" />
-                            <div className="flex gap-1">
-                                <span className="w-1 h-1 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                <span className="w-1 h-1 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                <span className="w-1 h-1 bg-slate-500 rounded-full animate-bounce"></span>
+
+                        {/* Interactive Suggestions (Pinned at Bottom above Input) */}
+                        <div className="px-5 py-2.5 bg-black/40 border-t border-white/5 flex gap-2 overflow-x-auto custom-scrollbar scroll-smooth">
+                            {['Browse Catalog', 'Go to Studio', '360° Studio', 'Cyberpunk Vibe'].map((label) => (
+                                <button
+                                    key={label}
+                                    onClick={() => handleSend(label)}
+                                    className="whitespace-nowrap px-4 py-2 bg-indigo-500/5 border border-indigo-500/20 rounded-full text-[11px] text-indigo-200 hover:bg-indigo-600 hover:text-white hover:border-indigo-400 transition-all font-bold tracking-tight shadow-sm"
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="p-4 bg-black/60 border-t border-white/10">
+                            <div className="relative flex items-center gap-2 max-w-full">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                    placeholder="Consult the Architect..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 pr-12 text-[13.5px] text-white focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/50 transition-all placeholder:text-indigo-900/40"
+                                />
+                                <button
+                                    onClick={() => handleSend()}
+                                    disabled={!input.trim() || isLoading}
+                                    title="Consult Architect"
+                                    className="absolute right-2 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-indigo-600/40"
+                                >
+                                    <Send size={18} />
+                                </button>
                             </div>
                         </div>
-                    )}
-                </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                {/* Quick Actions */}
-                <div className="px-6 pb-2 overflow-x-auto no-scrollbar flex items-center gap-2 whitespace-nowrap shrink-0">
-                    {actionChips.map((chip, i) => (
-                        <button
-                            key={i}
-                            onClick={() => {
-                                setInput(chip.label);
-                                // Trigger handleSend after state update might be tricky, 
-                                // so we just set input for now as per "access buttons" request
-                            }}
-                            className="px-3 py-1.5 bg-slate-900 border border-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:text-orange-400 hover:border-orange-500/30 transition-all flex items-center gap-1.5"
-                        >
-                            {chip.icon}
-                            {chip.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Input Area */}
-                <div className="p-4 bg-slate-900/30 border-t border-white/5 shrink-0">
-                    {selectedImage && (
-                        <div className="mb-3 relative w-12 h-12 rounded-lg overflow-hidden border border-orange-500 group">
-                            <img src={selectedImage} className="w-full h-full object-cover" />
-                            <button
-                                onClick={() => setSelectedImage(null)}
-                                className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <X className="w-3 h-3 text-white" />
-                            </button>
-                        </div>
-                    )}
-                    <div className="relative flex items-center gap-2">
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImageUpload}
-                            accept="image/*"
-                            className="hidden"
-                        />
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className={cn(
-                                "p-3 rounded-2xl border transition-all",
-                                selectedImage
-                                    ? "bg-orange-500/10 border-orange-500/50 text-orange-500"
-                                    : "bg-slate-950/80 border-white/10 text-slate-500 hover:text-slate-300"
-                            )}
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
-                        <div className="relative flex-1">
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="Type for style advice..."
-                                className="w-full bg-slate-950/80 border border-white/10 rounded-2xl py-3.5 pl-4 pr-12 text-[13px] text-white placeholder:text-slate-600 focus:outline-none focus:border-orange-500/50 transition-all"
-                            />
-                            <button
-                                onClick={handleSend}
-                                disabled={(!input.trim() && !selectedImage) || isTyping}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 disabled:opacity-50 disabled:hover:bg-orange-500 transition-all"
-                            >
-                                <Send className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Float Button */}
-            <button
+            {/* Floating Orb */}
+            <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "w-16 h-16 rounded-[1.75rem] flex items-center justify-center transition-all duration-500 shadow-[0_20px_40px_-12px_rgba(249,115,22,0.4)] group overflow-hidden relative",
-                    isOpen
-                        ? "bg-slate-900 border border-white/10 scale-90"
-                        : "bg-gradient-to-br from-orange-400 to-orange-600 border border-orange-400/20 hover:scale-110 active:scale-95"
+                    "w-16 h-16 rounded-full flex items-center justify-center transition-all animate-orb-pulse relative z-[110]",
+                    isOpen ? "bg-black border border-indigo-500/50 text-indigo-400" : "bg-indigo-600 shadow-xl shadow-indigo-600/70 text-white"
                 )}
             >
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                {isOpen ? (
-                    <X className="w-7 h-7 text-white" />
-                ) : (
-                    <div className="flex flex-col items-center">
-                        <Sparkles className="w-7 h-7 text-white animate-pulse" />
-                    </div>
-                )}
-            </button>
+                {isOpen ? <X size={32} /> : <MessageSquare size={32} />}
+            </motion.button>
         </div>
     );
 }

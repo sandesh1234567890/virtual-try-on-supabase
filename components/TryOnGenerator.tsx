@@ -109,6 +109,9 @@ export default function TryOnGenerator({ product, onClose }: TryOnGeneratorProps
             const formData = new FormData();
             formData.append('userImage', userBlob);
             formData.append('productName', product?.name || 'custom garment');
+            if (product?.id) {
+                formData.append('productId', product.id);
+            }
 
             if (garmentInputType === 'url' && !product) {
                 formData.append('garmentImageUrl', garmentImage);
@@ -144,37 +147,37 @@ export default function TryOnGenerator({ product, onClose }: TryOnGeneratorProps
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-0 sm:p-4 animate-in fade-in duration-300">
             {/* Ambient Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-            <div className="w-full max-w-6xl bg-slate-950/80 border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] relative backdrop-blur-xl">
+            <div className="w-full max-w-6xl bg-slate-950/80 border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-full sm:h-[90vh] relative backdrop-blur-xl">
 
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-6 right-6 z-50 p-2.5 rounded-full bg-black/50 text-white/70 hover:bg-red-500 hover:text-white transition-all border border-white/5 backdrop-blur-md"
+                    className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 p-2 rounded-full bg-black/50 text-white/70 hover:bg-red-500 hover:text-white transition-all border border-white/5 backdrop-blur-md"
                 >
-                    <X size={20} />
+                    <X size={18} />
                 </button>
 
                 {/* Left Side: Controls */}
-                <div className="w-full md:w-[400px] flex-shrink-0 bg-slate-900/50 border-r border-white/5 flex flex-col relative z-10">
-                    <div className="p-8 border-b border-white/5 bg-gradient-to-b from-slate-900 to-transparent">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20">
-                                <Sparkles size={18} className="text-white" />
+                <div className="w-full md:w-[360px] lg:w-[400px] flex-shrink-0 bg-slate-900/50 border-b md:border-b-0 md:border-r border-white/5 flex flex-col relative z-10 overflow-hidden">
+                    <div className="p-6 sm:p-8 border-b border-white/5 bg-gradient-to-b from-slate-900 to-transparent">
+                        <div className="flex items-center gap-3 mb-1 sm:mb-2">
+                            <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20">
+                                <Sparkles size={16} className="text-white" />
                             </div>
-                            <h2 className="text-xl font-bold text-white tracking-tight">
+                            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
                                 {product ? 'Curated Fit' : 'Custom Labs'}
                             </h2>
                         </div>
-                        <p className="text-xs text-slate-400 font-medium leading-relaxed pl-11">
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed pl-10 sm:pl-11">
                             Neural fabrication engine active.
                         </p>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 sm:space-y-8 custom-scrollbar">
 
                         {/* Step 1: Garment */}
                         <div className="space-y-4 animate-in slide-in-from-left-4 duration-500 delay-100">

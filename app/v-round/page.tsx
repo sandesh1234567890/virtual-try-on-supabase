@@ -139,21 +139,22 @@ export default function VRoundPro() {
         try {
             // 1. Front View (Source)
             setGeneratedViews(prev => ({ ...prev, front: sourceImage }));
-            setProgress(5);
+            setProgress(10);
 
-            // 2. Right View
-            const rightView = await generateView(sourceImage, "Fashion turnaround: Generate a high-fidelity image showing the DISTINCT RIGHT SIDE PROFILE view. IDENTITY LOCK: Face/Body must be 100% identical. FROZEN CAMERA: Maintain the EXACT camera distance, height, and zoom as IMAGE 1. SCALE LOCK: The person must stay the same size. No close-ups. Rotation only.");
-            setGeneratedViews(prev => ({ ...prev, right: rightView! }));
-            setProgress(35);
+            // Parallel Request for all views
+            const [rightView, backView, leftView] = await Promise.all([
+                generateView(sourceImage, "Fashion turnaround: Generate a high-fidelity image showing the DISTINCT RIGHT SIDE PROFILE view. IDENTITY LOCK: Face/Body must be 100% identical. FROZEN CAMERA: Maintain the EXACT camera distance, height, and zoom as IMAGE 1. SCALE LOCK: The person must stay the same size. No close-ups. Rotation only."),
+                generateView(sourceImage, "Fashion turnaround: Generate a high-fidelity image showing the FULL BACK view. FROZEN CAMERA & SCALE LOCK: Maintain identical camera framing and person size as IMAGE 1. The person turns 180 degrees. No zooming in. Preserve background depth perfectly."),
+                generateView(sourceImage, "Fashion turnaround: Generate a high-fidelity image showing the DISTINCT LEFT SIDE PROFILE view. FROZEN CAMERA & SCALE LOCK: Do NOT shift position or zoom. Maintain exact persona and garment fidelity. The person faces left. Consistent studio distance.")
+            ]);
 
-            // 3. Back View
-            const backView = await generateView(sourceImage, "Fashion turnaround: Generate a high-fidelity image showing the FULL BACK view. FROZEN CAMERA & SCALE LOCK: Maintain identical camera framing and person size as IMAGE 1. The person turns 180 degrees. No zooming in. Preserve background depth perfectly.");
-            setGeneratedViews(prev => ({ ...prev, back: backView! }));
-            setProgress(65);
+            setGeneratedViews(prev => ({
+                ...prev,
+                right: rightView!,
+                back: backView!,
+                left: leftView!
+            }));
 
-            // 4. Left View
-            const leftView = await generateView(sourceImage, "Fashion turnaround: Generate a high-fidelity image showing the DISTINCT LEFT SIDE PROFILE view. FROZEN CAMERA & SCALE LOCK: Do NOT shift position or zoom. Maintain exact persona and garment fidelity. The person faces left. Consistent studio distance.");
-            setGeneratedViews(prev => ({ ...prev, left: leftView! }));
             setProgress(100);
 
             setCurrentStep('preview');
@@ -224,66 +225,83 @@ export default function VRoundPro() {
     };
 
     return (
-        <div className="bg-[#0b0b0b] text-neutral-100 min-h-screen selection:bg-indigo-500/30 font-sans">
+        <div className="bg-[#050505] text-neutral-100 min-h-screen selection:bg-emerald-500/30 font-sans relative">
+            {/* Background Video */}
+            <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="fixed inset-0 w-full h-full object-cover z-0 opacity-30 mix-blend-screen"
+            >
+                <source 
+                    src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260217_030345_246c0224-10a4-422c-b324-070b7c0eceda.mp4" 
+                    type="video/mp4" 
+                />
+            </video>
+            
+            {/* Ambient Overlay */}
+            <div className="fixed inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 z-0 pointer-events-none"></div>
+
             <style jsx global>{`
                 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;600;700;900&display=swap');
                 
                 body {
-                    background-color: #0b0b0b;
+                    background-color: #050505;
                 }
             `}
             </style>
             <canvas ref={exportCanvasRef} width="1080" height="1440" className="hidden"></canvas>
 
             {/* Navigation */}
-            <header className="w-full py-8 md:py-12 px-6 flex items-center justify-between border-b border-neutral-900/50 mb-12">
-                <div className="flex items-center gap-6">
-                    <Link href="/" className="bg-neutral-800 text-white px-4 py-2.5 rounded-full border border-neutral-700 hover:bg-neutral-700 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                        <ArrowLeft className="w-4 h-4" /> Home
+            <header className="w-full py-8 md:py-12 px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between border-b border-white/5 mb-8 md:mb-12 gap-4 relative z-10 backdrop-blur-md bg-black/10">
+                <div className="flex items-center gap-6 sm:gap-8 w-full sm:w-auto">
+                    <Link href="/" className="bg-white/5 text-white px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shrink-0">
+                        <ArrowLeft className="w-3.5 h-3.5" /> Return
                     </Link>
-                    <div className="flex items-center gap-4 border-l border-neutral-800 pl-6">
-                        <div className="bg-indigo-600 p-2.5 rounded-2xl shadow-[0_0_20px_rgba(79,70,229,0.4)]">
-                            <Video className="w-5 h-5 text-white" />
+                    <div className="flex items-center gap-4 sm:gap-6 border-l border-white/10 pl-6 sm:pl-8 overflow-hidden">
+                        <div className="bg-emerald-500 p-2.5 sm:p-3 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)] shrink-0">
+                            <Video className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
                         </div>
-                        <div>
-                            <h1 className="text-xl font-black tracking-tighter uppercase italic">V-ROUND <span className="text-indigo-500 not-italic">PRO</span></h1>
-                            <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-[0.2em] mt-0.5">Automated 360 Turnarounds</p>
+                        <div className="truncate">
+                            <h1 className="text-xl sm:text-2xl font-black tracking-tighter uppercase italic truncate leading-none">V-ROUND <span className="text-emerald-500 not-italic">PRO</span></h1>
+                            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-[0.3em] mt-1.5 truncate">Neural Turnaround Engine</p>
                         </div>
                     </div>
                 </div>
                 {sourceImage && (
                     <button
                         onClick={resetApp}
-                        className="bg-neutral-900 text-neutral-400 hover:text-white px-5 py-2.5 border border-neutral-800 rounded-full transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
+                        className="bg-neutral-900 text-neutral-400 hover:text-white px-4 py-2 border border-neutral-800 rounded-full transition-all text-[9px] font-bold uppercase tracking-widest flex items-center gap-2"
                     >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        Reset System
+                        <RotateCcw className="w-3 h-3" />
+                        Reset
                     </button>
                 )}
             </header>
 
-            <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 px-6 items-start">
+            <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-24 px-4 sm:px-6 items-start pb-20">
                 <section className="space-y-6 order-2 lg:order-1">
                     {currentStep === 'upload' && (
-                        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-2xl">
-                            <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 md:p-8 shadow-2xl">
+                            <h2 className="text-lg md:text-xl font-semibold mb-2 flex items-center gap-2">
                                 <Upload className="w-5 h-5 text-indigo-400" />
                                 Step 1: Content Input
                             </h2>
-                            <p className="text-neutral-400 text-sm mb-8">
-                                Upload a fashion photo. V-ROUND will generate the spatial turnaround automatically.
+                            <p className="text-neutral-400 text-xs md:text-sm mb-6 md:mb-8">
+                                Upload a photo. V-ROUND will generate the spatial turnaround.
                             </p>
 
                             <label
-                                className="group relative flex flex-col items-center justify-center w-full h-80 border-2 border-dashed border-neutral-700 rounded-2xl cursor-pointer bg-neutral-900/50 hover:bg-neutral-800/50 hover:border-indigo-500/50 transition-all overflow-hidden"
+                                className="group relative flex flex-col items-center justify-center w-full h-64 md:h-80 border-2 border-dashed border-neutral-700 rounded-2xl cursor-pointer bg-neutral-900/50 hover:bg-neutral-800/50 hover:border-indigo-500/50 transition-all overflow-hidden"
                             >
                                 {!sourceImage ? (
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                                        <ImageIcon className="w-12 h-12 mb-4 text-neutral-600 group-hover:text-indigo-400" />
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                                        <ImageIcon className="w-10 h-10 md:w-12 md:h-12 mb-4 text-neutral-600 group-hover:text-indigo-400" />
                                         <p className="mb-2 text-sm text-neutral-300">
                                             <span className="font-semibold text-white">Select Photo</span>
                                         </p>
-                                        <p className="text-xs text-neutral-500 uppercase tracking-widest px-4">Single Perspective</p>
+                                        <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Single Perspective</p>
                                     </div>
                                 ) : (
                                     <img src={sourceImage} className="w-full h-full object-cover" alt="Source" />

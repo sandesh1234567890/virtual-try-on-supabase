@@ -53,11 +53,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
 
   const { category } = await searchParams;
 
-  const filteredProducts = category && category !== 'All Items'
-    ? allProducts.filter(p => p.category === category)
-    : allProducts;
+  const FEATURED_NAMES = [
+    'Your Red T-Shirt', 'Your White T-Shirt', 'Denim Jacket', 'Leather Jacket',
+    'Beige Trench Coat', 'Summer Dress', 'Floral Sundress', 'Blue Evening Gown',
+    'Formal Shirt', 'Plaid Flannel Shirt', 'Navy Business Suit', 'Blue Jeans'
+  ];
 
-  const categories = ['All Items', ...Array.from(new Set(allProducts.map(p => p.category)))];
+  const homepageProducts = allProducts.filter(p => FEATURED_NAMES.includes(p.name));
+
+  const filteredProducts = category && category !== 'All Items'
+    ? homepageProducts.filter(p => p.category === category)
+    : homepageProducts;
+
+  const categories = ['All Items', ...Array.from(new Set(homepageProducts.map(p => p.category)))];
 
   return (
     <ClientHome

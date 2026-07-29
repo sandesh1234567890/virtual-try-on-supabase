@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
+import { createClient } from '@/utils/supabase/server';
+import { prisma } from '@/lib/prisma';
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_NAME = "gemini-2.5-flash-image";
+const MODEL_NAME = "gemini-3-pro-image-preview";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
 async function prepareImage(buffer: Buffer, mimeType: string): Promise<{ data: string, mimeType: string }> {
@@ -30,6 +32,7 @@ export async function POST(request: NextRequest) {
         const garmentImage = formData.get('garmentImage') as Blob | null;
         const garmentImageUrl = formData.get('garmentImageUrl') as string | null;
         const productName = formData.get('productName') as string;
+        const productId = formData.get('productId') as string | null;
 
         if (!userImage) {
             console.warn("POST /api/virtual-try-on: Missing user image");
@@ -72,29 +75,34 @@ export async function POST(request: NextRequest) {
             garmentMimeType = prepared.mimeType;
         }
 
-        const promptText = `TASK: EDIT IMAGE 1 (PERSON) BY WEARING THE CLOTHING FROM IMAGE 2 (GARMENT).
-IMAGE 1 DESCRIPTION: A photo of a person.
-IMAGE 2 DESCRIPTION: ${productName}.
+        const promptText = `TASK: You are a professional digital compositor. Your task is to perform an INVISIBLE, PHOTO-REALISTIC garment transfer.
 
-INSTRUCTIONS:
-1. IDENTIFY LOCK: You MUST use the EXACT pixels for the face, hair, and skin from IMAGE 1. Any alteration to facial features, eyes, nose, mouth, or skin tone is a CRITICAL FAILURE.
-2. FROZEN POSE: Maintain the EXACT anatomical structure, body shape, and pose from IMAGE 1. The person must not change size or stance.
-3. Replace their current clothes with the EXACT garment shown in IMAGE 2.
-4. **CRITICAL VISUAL FIDELITY**: Match the MATERIAL (e.g., silk, leather, denim), TEXTURE (e.g., mesh, knit, shiny), PATTERNS, and LOGOS exactly as they appear in IMAGE 2.
-5. If the product name ("${productName}") conflicts with visual details in IMAGE 2, IGNORE the name and follow the visual image.
-6. The garment must be naturally draped over the person's body from IMAGE 1.
-7. ABSOLUTELY PRESERVE the entire background and environment from IMAGE 1.
-8. The final output must be a single image of the person from IMAGE 1 wearing the specific garment from IMAGE 2.`;
+INPUTS:
+- IMAGE 1: The USER (Target Body/Face).
+- IMAGE 2: The GARMENT (${productName}).
+
+CRITICAL INSTRUCTIONS - "ZERO TOLERANCE" FOR ALTERATION:
+1. **FACE & IDENTITY**: Do NOT regenerate or "enhance" the face. You must PIXEL-COPY the face, hair, and skin tone from IMAGE 1. If the face changes even slightly, the result is REJECTED.
+2. **BODY SHAPE**: Maintain the exact body shape and pose of IMAGE 1. Do not slim or change the user's physique.
+3. **GARMENT FIDELITY**: The garment from IMAGE 2 must be overlaid onto the body in IMAGE 1. It must retain 100% of its texture, material properties (e.g., stiffness vs. drape), and logos.
+4. **COMPOSITING**: Use advanced lighting matching to ensure the new garment looks like it was photographed in the environment of IMAGE 1. Shadows and reflections must match the original scene.
+5. **OUTPUT MAPPING**: 
+   - BASE: IMAGE 1 (Face, Body, Background)
+   - OVERLAY: IMAGE 2 (Warped to fit body)
+   - RESULT via "Neural Layering": Combine BASE and OVERLAY seamlessly.
+
+OUTPUT: A single, high-resolution, photo-realistic image.`;
 
         const payload = {
             contents: [{
                 parts: [
+                    { text: promptText },
                     { inlineData: { mimeType: userMime, data: userBase64 } },
-                    { inlineData: { mimeType: garmentMimeType, data: garmentBase64 } },
-                    { text: promptText }
+                    { inlineData: { mimeType: garmentMimeType, data: garmentBase64 } }
                 ]
             }],
             generationConfig: {
+                // Use pure IMAGE modality for speed and direct visual output with this model
                 responseModalities: ['IMAGE']
             }
         };
@@ -136,6 +144,31 @@ INSTRUCTIONS:
         }
 
         console.log("POST /api/virtual-try-on: Success!");
+
+        // Save History (Async, don't block response if possible, but Vercel functions might kill it?)
+        // Better to await it or use `waitUntil` if available (Next.js 15 has after()).
+        // For simple setup, we await in try-catch to be safe.
+        // We need user session.
+        try {
+            const supabase = await createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                const finalImage = `data:${mimeType};base64,${base64Data}`;
+                await prisma.tryOnStats.create({
+                    data: {
+                        userId: user.id,
+                        outputImage: finalImage,
+                        productId: productId || undefined, // Only if present
+                    }
+                });
+                console.log("History saved to DB");
+            }
+        } catch (historyErr) {
+            console.error("Failed to save history:", historyErr);
+            // Non-blocking error for the user
+        }
+
         return NextResponse.json({
             image: base64Data,
             mimeType: mimeType

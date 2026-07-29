@@ -3,10 +3,19 @@ import { Plus, Package, Trash2, Calendar } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { createClient } from '@/utils/supabase/server';
+import { redirect } from 'next/navigation';
+import { isAdmin } from '@/utils/admin';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!isAdmin(user)) {
+        redirect('/');
+    }
 
     // Fetch products from Real DB
     const products = await prisma.product.findMany({

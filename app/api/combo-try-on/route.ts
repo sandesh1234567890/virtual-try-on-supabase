@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing images" }, { status: 400 });
         }
 
+        // Logic aligned with 2v copy.html: Pass prompt directly, pure image modality
         const parts = [
             { text: prompt },
             ...images.map((img: string) => ({
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
         }
 
         const result = await response.json();
-        console.log("Gemini API Success Response:", JSON.stringify(result, null, 2));
+        // console.log("Gemini API Success Response:", JSON.stringify(result, null, 2));
 
         if (!result.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)) {
             console.error("Gemini Response Missing Image Data. Full Candidate:", JSON.stringify(result.candidates, null, 2));

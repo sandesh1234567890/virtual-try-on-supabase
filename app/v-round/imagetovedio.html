@@ -263,7 +263,7 @@
         // CRITICAL: Always keep apiKey as empty string. The environment will inject it.
         const apiKey = ""; // CLEARED FOR SECURITY
         // Use the specialized image-to-image preview model
-        const MODEL_I2I = "gemini-2.0-flash-exp-image-generation";
+        const MODEL_I2I = "gemini-2.5-flash-image";
         const ANGLES = ['front', 'right', 'back', 'left'];
 
         // --- State Management ---
@@ -457,7 +457,7 @@
                         { inlineData: { mimeType: "image/png", data: base64Content } }
                     ]
                 }],
-                generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+                generationConfig: { responseModalities: ['IMAGE'] }
             };
 
             const maxRetries = 5;

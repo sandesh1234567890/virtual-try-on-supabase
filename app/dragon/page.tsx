@@ -32,39 +32,38 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-const PRODUCTS = {
-    tops: [
-        { id: 't1', name: 'Midnight Dragon Tee (Black)', img: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=400' },
-        { id: 't2', name: 'Crimson Tech Hoodie (Red)', img: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=400' },
-        { id: 't3', name: 'Imperial Oxford (White)', img: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=400' },
-        { id: 't4', name: 'Cyber Mesh (Grey)', img: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&q=80&w=400' },
-    ],
-    bottoms: [
-        { id: 'b1', name: 'Cargo Tech Pants (Black)', img: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&q=80&w=400' },
-        { id: 'b2', name: 'Architecture Denim (Blue)', img: 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?auto=format&fit=crop&q=80&w=400' },
-        { id: 'b3', name: 'Stealth Slacks (Grey)', img: 'https://images.unsplash.com/photo-1551488852-081bd4c9028c?auto=format&fit=crop&q=80&w=400' },
-    ],
-    shoes: [
-        { id: 's1', name: 'Talon Lows (Black)', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=400' },
-        { id: 's2', name: 'Pulse Runners (White)', img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&q=80&w=400' },
-        { id: 's3', name: 'Scale-Lock Boots (Brown)', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=400' },
-    ]
+type Product = {
+    id: string;
+    name: string;
+    img: string;
+    cat: string;
 };
 
-type Category = keyof typeof PRODUCTS;
+type Category = 'tops' | 'bottoms' | 'shoes' | 'suits' | 'dresses';
 
 export default function DragonStudio() {
+    const [products, setProducts] = useState<Record<Category, Product[]>>({
+        tops: [],
+        bottoms: [],
+        shoes: [],
+        suits: [],
+        dresses: [],
+    });
     const [currentCategory, setCurrentCategory] = useState<Category>('tops');
     const [userImageBase64, setUserImageBase64] = useState<string | null>(null);
-    const [selections, setSelections] = useState<Record<Category, typeof PRODUCTS['tops'][0] | null>>({
+    const [selections, setSelections] = useState<Record<Category, Product | null>>({
         tops: null,
         bottoms: null,
         shoes: null,
+        suits: null,
+        dresses: null,
     });
     const [customAssets, setCustomAssets] = useState<Record<Category, string | null>>({
         tops: null,
         bottoms: null,
         shoes: null,
+        suits: null,
+        dresses: null,
     });
     const [isProcessing, setIsProcessing] = useState(false);
     const [notification, setNotification] = useState<{ text: string; error?: boolean } | null>(null);
@@ -74,6 +73,56 @@ export default function DragonStudio() {
     const customTopsInputRef = useRef<HTMLInputElement>(null);
     const customBottomsInputRef = useRef<HTMLInputElement>(null);
     const customShoesInputRef = useRef<HTMLInputElement>(null);
+    const customSuitsInputRef = useRef<HTMLInputElement>(null);
+    const customDressesInputRef = useRef<HTMLInputElement>(null);
+
+    // Fetch products from DB
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await fetch('/api/products');
+                const data = await res.json();
+
+                if (!Array.isArray(data)) {
+                    console.error("Products data is not an array:", data);
+                    showNotification("Error loading catalog", true);
+                    return;
+                }
+
+                const grouped: Record<Category, Product[]> = {
+                    tops: [],
+                    bottoms: [],
+                    shoes: [],
+                    suits: [],
+                    dresses: [],
+                };
+
+                data.forEach((p: any) => {
+                    const cat = (p.category || 'tops').toLowerCase();
+                    let mappedCat: Category = 'tops';
+
+                    if (cat.includes('suit')) mappedCat = 'suits';
+                    else if (cat.includes('dress')) mappedCat = 'dresses';
+                    else if (cat.includes('pant') || cat.includes('bottom') || cat.includes('denim') || cat.includes('jean') || cat.includes('slack')) mappedCat = 'bottoms';
+                    else if (cat.includes('shoe') || cat.includes('kick') || cat.includes('footwear') || cat.includes('boot')) mappedCat = 'shoes';
+                    else mappedCat = 'tops';
+
+                    grouped[mappedCat].push({
+                        id: p.id,
+                        name: p.name || 'Untitled Item',
+                        img: p.image || '',
+                        cat: mappedCat
+                    });
+                });
+
+                setProducts(grouped);
+            } catch (err) {
+                console.error("Failed to fetch products:", err);
+                showNotification("Failed to fetch catalog", true);
+            }
+        };
+        fetchProducts();
+    }, []);
 
     useEffect(() => {
         if (notification) {
@@ -149,11 +198,12 @@ export default function DragonStudio() {
             const mapping: string[] = ["IMAGE 1: The person (Identity, Pose, Background)"];
             let currentIndex = 2;
 
-            if (selections.tops) {
-                const b64 = await urlToBase64(selections.tops.img);
+            if (selections.tops || selections.suits || selections.dresses) {
+                const item = selections.tops || selections.suits || selections.dresses;
+                const b64 = await urlToBase64(item!.img);
                 if (b64) {
                     images.push(b64);
-                    mapping.push(`IMAGE ${currentIndex}: The TOP garment (${selections.tops.name})`);
+                    mapping.push(`IMAGE ${currentIndex}: The TOP garment (${item!.name})`);
                     currentIndex++;
                 }
             }
@@ -177,15 +227,15 @@ export default function DragonStudio() {
             }
 
             const prompt = `Virtual Try-On Fashion Task:
-Perform a high-fidelity neural synthesis by applying the following combo onto the person in IMAGE 1: ${activeCombo.join(', ')}.
+Perform a high-fidelity neural synthesis by applying the following combo onto the person in the provided photo: ${activeCombo.join(', ')}.
 
 Neural Layering Instructions:
-${selections.tops ? `1. TORSO: Map the TOP garment from IMAGE ${mapping.findIndex(m => m.includes('TOP')) + 1} onto the body torso. Ensure it layers naturally over the waistband.` : ''}
-${selections.bottoms ? `2. LEGS: Map the BOTTOM garment from IMAGE ${mapping.findIndex(m => m.includes('BOTTOM')) + 1} onto the legs. Ensure the hem falls realistically over the footwear.` : ''}
-${selections.shoes ? `3. FEET: Replace footwear with selected SHOES from IMAGE ${mapping.findIndex(m => m.includes('FOOTWEAR')) + 1}.` : ''}
+1. TORSO: Map the TOP garment onto the body torso. Ensure it layers naturally over the waistband (tucked or untucked based on style).
+2. LEGS: Map the BOTTOM garment onto the legs. Ensure the hem falls realistically over the footwear.
+3. FEET: Replace footwear with selected SHOES. CRITICAL: EXACT MATCH required. If shoes are RED, output MUST be RED. Do NOT default to black boots.
 
 CONSTRAINTS:
-- **IDENTITY LOCK**: PRESERVE the exact face, pose, and original background from IMAGE 1. Any alteration to the persona is a FAILURE.
+- PRESERVE the exact face, pose, and original background from the user source photo.
 - Output only the final synthesized high-resolution image result.`;
 
             const response = await fetch('/api/combo-try-on', {
@@ -217,7 +267,7 @@ CONSTRAINTS:
         }
     };
 
-    const selectItem = (cat: Category, item: typeof PRODUCTS['tops'][0]) => {
+    const selectItem = (cat: Category, item: Product) => {
         setSelections(prev => ({
             ...prev,
             [cat]: prev[cat]?.id === item.id ? null : item
@@ -225,14 +275,14 @@ CONSTRAINTS:
     };
 
     const clearSelections = () => {
-        setSelections({ tops: null, bottoms: null, shoes: null });
+        setSelections({ tops: null, bottoms: null, shoes: null, suits: null, dresses: null });
     };
 
     const resetApp = () => {
         setUserImageBase64(null);
         setResultImage(null);
         clearSelections();
-        setCustomAssets({ tops: null, bottoms: null, shoes: null });
+        setCustomAssets({ tops: null, bottoms: null, shoes: null, suits: null, dresses: null });
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -248,48 +298,57 @@ CONSTRAINTS:
 
     return (
         <>
-            <div className="min-h-screen bg-[#020617] text-[#f1f5f9] font-sans selection:bg-orange-500/30 overflow-x-hidden">
-                <style jsx global>{`
+        <div className="min-h-screen bg-[#050505] text-[#f1f5f9] font-sans selection:bg-emerald-500/30 relative overflow-x-hidden">
+            {/* Cinematic Background Video */}
+            <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="fixed inset-0 w-full h-full object-cover z-0 opacity-20 mix-blend-screen"
+            >
+                <source 
+                    src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260306_074215_04640ca7-042c-45d6-bb56-58b1e8a42489.mp4" 
+                    type="video/mp4" 
+                />
+            </video>
+
+            {/* Content Overlays */}
+            <div className="fixed inset-0 bg-gradient-to-b from-black/80 via-transparent to-black z-0 pointer-events-none"></div>
+
+            <style jsx global>{`
                 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;600;700;900&display=swap');
                 
                 .brand-font {
                     font-family: 'Cinzel', serif;
                 }
 
+                .custom-scrollbar {
+                    scroll-behavior: smooth;
+                }
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 4px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
-                    background: #0f172a;
+                    background: transparent;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #334155;
+                    background: rgba(16, 185, 129, 0.4);
                     border-radius: 10px;
                 }
-
-                .canvas-container {
-                    aspect-ratio: 3/4;
-                    max-height: 60vh;
-                    width: 100%;
-                }
-
-                @media (min-width: 1024px) {
-                    .canvas-container {
-                        aspect-ratio: auto;
-                        height: 100%;
-                        min-height: 650px;
-                    }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(16, 185, 129, 0.7);
                 }
 
                 .card-active {
-                    border-color: #f97316 !important;
-                    background: rgba(249, 115, 22, 0.1) !important;
-                    box-shadow: 0 0 30px rgba(249, 115, 22, 0.3);
+                    border-color: #10b981 !important;
+                    background: rgba(16, 185, 129, 0.1) !important;
+                    box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
                     transform: translateY(-2px);
                 }
 
-                .btn-gradient {
-                    background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+                .btn-emerald {
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 }
 
                 @keyframes scanline {
@@ -298,278 +357,213 @@ CONSTRAINTS:
                 }
 
                 .scanner-bar {
-                    height: 4px;
-                    background: linear-gradient(to right, transparent, #f97316, transparent);
-                    animation: scanline 2.5s linear infinite;
+                    height: 2px;
+                    background: linear-gradient(to right, transparent, #10b981, transparent);
+                    box-shadow: 0 0 15px #10b981;
+                    animation: scanline 3s linear infinite;
                 }
             `}</style>
 
-                {/* Hidden Custom Inputs */}
-                <input type="file" ref={customTopsInputRef} className="hidden" accept="image/*" onChange={(e) => handleCustomUpload('tops', e)} />
-                <input type="file" ref={customBottomsInputRef} className="hidden" accept="image/*" onChange={(e) => handleCustomUpload('bottoms', e)} />
-                <input type="file" ref={customShoesInputRef} className="hidden" accept="image/*" onChange={(e) => handleCustomUpload('shoes', e)} />
-
-                {/* Notification UI */}
-                <div className={cn(
-                    "fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm transition-all duration-400 cubic-bezier(0.4, 0, 0.2, 1)",
-                    notification ? "translate-y-0 opacity-100" : "translate-y-[200%] opacity-0"
-                )}>
-                    <div className="bg-slate-900/95 backdrop-blur-2xl border border-slate-700 p-4 rounded-3xl shadow-2xl flex items-center gap-4">
-                        <div className={cn(
-                            "p-2 rounded-xl",
-                            notification?.error ? "bg-red-500/20 text-red-500" : "bg-orange-500/20 text-orange-500"
-                        )}>
-                            {notification?.error ? <AlertCircle className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
+            {/* Navigation */}
+            <nav className="fixed w-full z-50 bg-black/20 backdrop-blur-3xl border-b border-white/5 h-20 flex items-center">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                    <div className="flex items-center justify-between">
+                        <Link href="/" className="flex items-center gap-4 group shrink-0">
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-2xl shadow-2xl transition-all group-hover:scale-110 group-hover:bg-emerald-500 group-hover:border-emerald-500">
+                                <Flame className="text-emerald-500 group-hover:text-black h-5 w-5 md:h-6 md:w-6 transition-colors" />
+                            </div>
+                            <div className="flex flex-col">
+                                <h1 className="text-base md:text-xl font-black tracking-tighter uppercase brand-font text-white leading-none mb-1">
+                                    Combo Studio
+                                </h1>
+                                <span className="text-[10px] font-black tracking-[0.4em] text-emerald-500 uppercase leading-none opacity-60">Synthesis</span>
+                            </div>
+                        </Link>
+                        <div className="flex gap-4">
+                            <Link href="/" className="bg-white/5 text-white px-5 py-2.5 rounded-full border border-white/10 hover:bg-white/10 transition-all text-[10px] md:text-xs font-black flex items-center gap-2 uppercase tracking-widest shadow-2xl">
+                                <ArrowLeft className="h-4 w-4" /> <span className="hidden xs:inline">Return</span>
+                            </Link>
                         </div>
-                        <p className="text-sm font-bold text-slate-200 text-center flex-1">
-                            {notification?.text || "System Ready"}
-                        </p>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Main Content */}
+            <main className="pt-28 md:pt-36 pb-20 px-4 sm:px-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-10 lg:gap-16 min-h-screen relative z-10">
+                {/* VISUALIZATION */}
+                <div className="w-full lg:w-7/12 order-1 lg:order-2">
+                    <div className="relative bg-black rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.05)] border border-white/5 flex items-center justify-center group h-[500px] lg:h-[750px]">
+                        {!userImageBase64 ? (
+                            <div className="text-center p-12 max-w-md w-full animate-in fade-in zoom-in duration-700">
+                                <div className="w-24 h-24 rounded-[2.5rem] bg-white/5 mx-auto flex items-center justify-center mb-10 border border-white/10 shadow-2xl group-hover:rotate-12 transition-transform duration-700">
+                                    <UserPlus className="text-emerald-500 h-10 w-10" />
+                                </div>
+                                <h2 className="text-3xl font-black text-white mb-4 brand-font uppercase italic tracking-tighter">Capture_Signal</h2>
+                                <p className="text-neutral-500 mb-10 text-[10px] font-bold uppercase tracking-widest leading-relaxed">
+                                    Lock identity fragments for neural re-synthesis. Standing perspective required.
+                                </p>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full py-6 rounded-[2rem] bg-white text-black font-black hover:bg-emerald-500 transition-all shadow-2xl flex items-center justify-center gap-4 uppercase tracking-[0.3em] text-[10px]"
+                                >
+                                    <UploadCloud className="h-5 w-5" /> Initialize Identification
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="w-full h-full relative flex items-center justify-center bg-[#010101]">
+                                <div className="absolute top-8 right-8 z-40 flex flex-col gap-4">
+                                    <button onClick={resetApp} className="bg-black/60 backdrop-blur-3xl text-white p-4 rounded-full border border-white/10 hover:bg-emerald-500 hover:text-black transition-all shadow-2xl">
+                                        <RotateCcw className="h-5 w-5" />
+                                    </button>
+                                </div>
+                                <div className="absolute top-8 left-8 z-40">
+                                    <span className="px-5 py-2.5 rounded-full bg-black/60 text-white font-black text-[9px] uppercase tracking-[0.4em] shadow-2xl border border-white/10 backdrop-blur-3xl flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        Signal Locked
+                                    </span>
+                                </div>
+                                <img src={resultImage || userImageBase64} alt="Synthesis" className="max-w-full max-h-full object-contain transition-all duration-1000 p-10" />
+                                {isProcessing && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center z-50 bg-black/98 backdrop-blur-3xl">
+                                        <div className="scanner-bar absolute w-full top-0"></div>
+                                        <div className="relative mb-12">
+                                            <div className="w-32 h-32 border border-white/5 rounded-full animate-pulse"></div>
+                                            <div className="absolute top-0 left-0 w-32 h-32 border-t border-emerald-500 rounded-full animate-spin"></div>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <Sparkles className="text-emerald-500 h-10 w-10" />
+                                            </div>
+                                        </div>
+                                        <h3 className="text-emerald-500 font-mono text-[9px] tracking-[0.7em] uppercase font-black">Neural_Architecture_Recoloring</h3>
+                                        <p className="text-neutral-700 text-[9px] mt-6 uppercase tracking-[0.4em] italic font-bold">Synthesizing Layers...</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="fixed w-full z-50 bg-slate-950/90 backdrop-blur-2xl border-b border-slate-800/50">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16 md:h-20">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-gradient-to-br from-orange-500 to-red-600 p-2 rounded-xl shadow-lg">
-                                    <Flame className="text-white h-5 w-5 md:h-6 md:w-6" />
-                                </div>
-                                <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase brand-font bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
-                                    What Your Dragon
-                                </h1>
+                {/* SELECTION */}
+                <div className="w-full lg:w-5/12 order-2 lg:order-1 flex flex-col gap-10">
+                    <div className="bg-white/5 border border-white/10 rounded-[3rem] p-8 md:p-10 backdrop-blur-3xl flex-1 flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.5)]">
+                        <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/5">
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-2xl font-black brand-font italic uppercase text-white">Archive_Selection</h2>
+                                <p className="text-[9px] text-neutral-600 uppercase tracking-widest font-black">Neural Combo Protocol</p>
                             </div>
-                            <div className="flex gap-2">
-                                <Link href="/" className="bg-slate-800 text-white px-4 py-2.5 rounded-full border border-slate-700 hover:bg-slate-700 transition-all text-xs font-bold flex items-center gap-2">
-                                    <ArrowLeft className="h-4 w-4" /> Home
-                                </Link>
-                                <button className="bg-slate-800 text-white p-2.5 rounded-full border border-slate-700 hover:bg-slate-700 transition-all">
-                                    <ShoppingBag className="h-4 w-4" />
-                                </button>
-                            </div>
+                            <button onClick={clearSelections} className="text-[10px] font-black uppercase text-neutral-500 hover:text-emerald-500 transition-all border border-white/5 px-5 py-2.5 rounded-2xl bg-white/5 shadow-2xl">Reset_V</button>
                         </div>
-                    </div>
-                </nav>
-
-                {/* Main Content */}
-                <main className="pt-20 md:pt-28 pb-12 px-4 sm:px-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row gap-8 lg:gap-12 min-h-screen">
-
-                    {/* VISUALIZATION */}
-                    <div className="w-full lg:w-7/12 order-1 lg:order-2">
-                        <div className="relative bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-800/50 canvas-container flex items-center justify-center group">
-
-                            {!userImageBase64 ? (
-                                /* State: Initial Upload Panel */
-                                <div className="text-center p-8 max-w-md w-full animate-in fade-in zoom-in duration-500">
-                                    <div className="w-24 h-24 rounded-full bg-slate-900 mx-auto flex items-center justify-center mb-6 border border-slate-800 shadow-2xl">
-                                        <UserPlus className="text-slate-500 h-10 w-10" />
-                                    </div>
-                                    <h2 className="text-2xl font-black text-white mb-3 brand-font uppercase italic text-center">Identity Node</h2>
-                                    <p className="text-slate-400 mb-8 text-sm leading-relaxed text-center">
-                                        Upload a photo of yourself standing. This will be the base for our neural garment synthesis.
-                                    </p>
-                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-full py-5 rounded-2xl bg-white text-slate-950 font-black hover:bg-slate-100 transition-all shadow-2xl flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
-                                    >
-                                        <UploadCloud className="h-5 w-5" /> Capture Photo
-                                    </button>
-                                </div>
-                            ) : (
-                                /* State: Active Render Display */
-                                <div className="w-full h-full relative flex items-center justify-center bg-[#010101]">
-                                    <div className="absolute top-6 right-6 z-40 flex flex-col gap-3">
-                                        <button onClick={resetApp} className="bg-black/60 backdrop-blur-xl text-white p-3.5 rounded-full border border-white/10 hover:bg-red-600 transition-all shadow-2xl">
-                                            <RotateCcw className="h-5 w-5" />
-                                        </button>
-                                    </div>
-
-                                    <div className="absolute top-6 left-6 z-40">
-                                        <span className="px-4 py-2 rounded-full bg-slate-900/90 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-slate-700 backdrop-blur-md flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                                            Identity Locked
-                                        </span>
-                                    </div>
-
-                                    <img src={resultImage || userImageBase64} alt="Neural Synthesis Result" className="max-w-full max-h-full object-contain transition-all duration-1000" />
-
-                                    {/* AI Synthesis Overlay */}
-                                    {isProcessing && (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center z-50 bg-black/95 backdrop-blur-3xl">
-                                            <div className="scanner-bar absolute w-full top-0"></div>
-                                            <div className="relative mb-10">
-                                                <div className="w-32 h-32 border-2 border-slate-800 rounded-full"></div>
-                                                <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-orange-500 rounded-full animate-spin"></div>
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <Zap className="text-orange-500 h-10 w-10 animate-pulse" />
-                                                </div>
-                                            </div>
-                                            <h3 className="text-orange-400 font-mono text-[10px] tracking-[0.6em] uppercase font-black">Neural Re-Synthesis</h3>
-                                            <p className="text-slate-600 text-[9px] mt-4 uppercase tracking-[0.3em] italic">Mapping Combo Layers...</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* SELECTION */}
-                    <div className="w-full lg:w-5/12 order-2 lg:order-1 flex flex-col gap-6">
-                        <div className="bg-slate-900/30 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl flex-1 flex flex-col shadow-2xl">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex flex-col">
-                                    <h2 className="text-xl font-black brand-font italic uppercase text-white text-center sm:text-left">Wardrobe Combo</h2>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-black mt-1">Multi-Category Selection</p>
-                                </div>
-                                <button onClick={clearSelections} className="text-[9px] font-black uppercase text-slate-500 hover:text-orange-500 transition-all border border-slate-800 px-3 py-1.5 rounded-lg">Reset</button>
-                            </div>
-                            {/* Tabs */}
-                            <div className="flex p-1 bg-slate-950 rounded-2xl mb-6 border border-slate-800/50 backdrop-blur-xl shrink-0">
-                                {(['tops', 'bottoms', 'shoes'] as const).map((cat) => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setCurrentCategory(cat)}
-                                        className={cn(
-                                            "flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all",
-                                            currentCategory === cat
-                                                ? "bg-slate-800/60 text-orange-400 border border-white/5"
-                                                : "text-slate-500 hover:text-slate-400"
-                                        )}
-                                    >
-                                        {cat === 'shoes' ? 'Kicks' : cat}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Custom Upload Asset */}
-                            <div className="mb-6 shrink-0">
-                                <div
-                                    onClick={() => {
-                                        if (currentCategory === 'tops') customTopsInputRef.current?.click();
-                                        if (currentCategory === 'bottoms') customBottomsInputRef.current?.click();
-                                        if (currentCategory === 'shoes') customShoesInputRef.current?.click();
-                                    }}
+                        
+                        {/* Tabs */}
+                        <div className="flex p-1.5 bg-black/40 rounded-2xl mb-8 border border-white/5 backdrop-blur-3xl overflow-x-auto no-scrollbar shadow-inner">
+                            {(['tops', 'bottoms', 'shoes', 'suits', 'dresses'] as const).map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setCurrentCategory(cat)}
                                     className={cn(
-                                        "relative group cursor-pointer rounded-2xl overflow-hidden border transition-all duration-500 flex items-center gap-4 p-4",
-                                        customAssets[currentCategory]
-                                            ? "border-orange-500/50 bg-orange-500/5 shadow-lg shadow-orange-500/10"
-                                            : "border-white/5 bg-slate-900/40 hover:border-orange-500/30 hover:bg-slate-800/20"
+                                        "flex-1 px-5 py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                                        currentCategory === cat ? "bg-white text-black shadow-2xl" : "text-neutral-500 hover:text-white"
                                     )}
                                 >
-                                    <div className="w-12 h-12 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/10 group-hover:border-orange-500/30 transition-all duration-500 shrink-0">
-                                        {customAssets[currentCategory] ? (
-                                            <img src={customAssets[currentCategory]!} className="w-full h-full object-cover rounded-lg" />
-                                        ) : (
-                                            <Plus className="h-5 w-5 text-slate-400 group-hover:text-orange-400" />
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                                            {customAssets[currentCategory] ? 'Visual Active' : 'Neural Upload'}
-                                        </span>
-                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                                            {customAssets[currentCategory] ? 'Click to Change' : `Personal ${currentCategory}`}
-                                        </span>
-                                    </div>
+                                    {cat === 'shoes' ? 'Kicks' : cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Custom neural Upload asset */}
+                        <div className="mb-8">
+                            <div
+                                onClick={() => {
+                                    if (currentCategory === 'tops') customTopsInputRef.current?.click();
+                                    if (currentCategory === 'bottoms') customBottomsInputRef.current?.click();
+                                    if (currentCategory === 'shoes') customShoesInputRef.current?.click();
+                                    if (currentCategory === 'suits') customSuitsInputRef.current?.click();
+                                    if (currentCategory === 'dresses') customDressesInputRef.current?.click();
+                                }}
+                                className={cn(
+                                    "relative group cursor-pointer rounded-[2rem] overflow-hidden border transition-all duration-700 flex items-center gap-6 p-5",
+                                    customAssets[currentCategory] ? "border-emerald-500/50 bg-emerald-500/5 shadow-2xl shadow-emerald-500/10" : "border-white/5 bg-white/5 hover:border-emerald-500/30 hover:bg-white/10"
+                                )}
+                            >
+                                <div className="w-14 h-14 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30 transition-all duration-700 shrink-0">
+                                    {customAssets[currentCategory] ? (
+                                        <img src={customAssets[currentCategory]!} className="w-full h-full object-cover rounded-xl" />
+                                    ) : (
+                                        <Plus className="h-6 w-6 text-neutral-500 group-hover:text-emerald-500" />
+                                    )}
                                 </div>
-                            </div>
-
-                            {/* Product Grid */}
-                            <div className="grid grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar pb-6 flex-1 min-h-0">
-                                {PRODUCTS[currentCategory].map((item) => {
-                                    const active = selections[currentCategory]?.id === item.id;
-                                    return (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => selectItem(currentCategory, item)}
-                                            className="group cursor-pointer flex flex-col gap-2.5"
-                                        >
-                                            <div className={cn(
-                                                "relative rounded-2xl overflow-hidden border transition-all duration-500 aspect-[4/5] bg-slate-950",
-                                                active
-                                                    ? "border-orange-500 scale-[1.02] ring-4 ring-orange-500/10"
-                                                    : "border-white/5 hover:border-orange-500/20"
-                                            )}>
-                                                <img src={item.img} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
-
-                                                {active && (
-                                                    <div className="absolute top-3 right-3 bg-orange-500 p-1.5 rounded-full z-20 border-2 border-slate-950 shadow-xl scale-110">
-                                                        <Check className="text-white h-2.5 w-2.5" />
-                                                    </div>
-                                                )}
-
-                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                            </div>
-                                            <div className="px-1">
-                                                <p className={cn(
-                                                    "text-[9px] font-black uppercase tracking-[0.1em] transition-colors leading-tight",
-                                                    active ? "text-orange-400" : "text-slate-500 group-hover:text-slate-300"
-                                                )}>
-                                                    {item.name}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Neural Tray */}
-                            <div className="mt-6 pt-6 border-t border-slate-800/50">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Active Buffer</h3>
-                                    <span className="text-[9px] font-bold text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-md uppercase">
-                                        {Object.values(selections).filter(Boolean).length} Selected
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
+                                        {customAssets[currentCategory] ? 'Signal Active' : 'Neural Fragment'}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest leading-none">
+                                        {customAssets[currentCategory] ? 'Access Neural Node' : `Upload personal ${currentCategory}`}
                                     </span>
                                 </div>
+                                <div className="ml-auto w-2 h-2 rounded-full bg-white/10 group-hover:bg-emerald-500 transition-colors"></div>
                             </div>
-                            <div className="flex gap-3 mb-8">
-                                {(['tops', 'bottoms', 'shoes'] as const).map((cat) => {
-                                    const item = selections[cat];
-                                    return (
-                                        <div key={cat} className={cn(
-                                            "flex-shrink-0 w-14 h-14 rounded-2xl border flex items-center justify-center overflow-hidden transition-all",
-                                            item ? "border-orange-500 bg-slate-900 shadow-xl" : "border-dashed border-slate-800 bg-slate-950/20"
-                                        )}>
-                                            {item ? (
-                                                <img src={item.img} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="text-[8px] text-slate-700 font-black uppercase text-center">{cat[0]}</span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                        </div>
 
-                            {/* Synthesis Button */}
+                        {/* Product Grid */}
+                        <div className="grid grid-cols-2 gap-6 overflow-y-auto pr-3 custom-scrollbar h-[450px] scroll-smooth pb-10">
+                            {products[currentCategory].map((item) => {
+                                const active = selections[currentCategory]?.id === item.id;
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => selectItem(currentCategory, item)}
+                                        className="group cursor-pointer flex flex-col gap-3.5"
+                                    >
+                                        <div className={cn(
+                                            "relative rounded-[2rem] overflow-hidden border transition-all duration-700 aspect-[4/5] bg-black shadow-2xl",
+                                            active ? "border-emerald-500 scale-[1.05] ring-8 ring-emerald-500/5 shadow-emerald-500/10" : "border-white/5 hover:border-white/20"
+                                        )}>
+                                            <img src={item.img} className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+                                            {active && (
+                                                <div className="absolute top-4 right-4 bg-emerald-500 p-2 rounded-full z-20 border-4 border-black shadow-2xl">
+                                                    <Check className="text-black h-3 w-3" />
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-40"></div>
+                                        </div>
+                                        <div className="px-2">
+                                            <p className={cn(
+                                                "text-[10px] font-black uppercase tracking-widest transition-colors leading-tight",
+                                                active ? "text-emerald-500" : "text-neutral-600 group-hover:text-white"
+                                            )}>
+                                                {item.name}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Buffer Tray & Ignite Button */}
+                        <div className="mt-auto pt-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.3em]">Neural_Buffer</h3>
+                                <div className="flex gap-2">
+                                    {Object.values(selections).filter(Boolean).map((_, i) => (
+                                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                    ))}
+                                </div>
+                            </div>
                             <button
                                 onClick={handleGenerate}
                                 disabled={isProcessing}
-                                className="relative w-full py-6 rounded-3xl font-black text-lg uppercase tracking-[0.3em] transition-all duration-500 overflow-hidden group btn-gradient shadow-2xl active:scale-95 disabled:opacity-50 mt-auto"
+                                className="relative w-full py-7 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.5em] transition-all duration-700 overflow-hidden group bg-white text-black shadow-[0_0_50px_rgba(255,255,255,0.1)] active:scale-95 disabled:grayscale"
                             >
-                                <span className="relative z-10 flex items-center justify-center gap-3 text-white">
-                                    <Sparkles className="h-5 w-5" /> Ignite Combo
+                                <span className="relative z-10 flex items-center justify-center gap-4">
+                                    <Sparkles className="h-5 w-5" /> Initialize Synthesis
                                 </span>
-                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                                <div className="absolute inset-0 bg-emerald-500 translate-y-full group-hover:translate-y-0 transition-transform duration-700"></div>
                             </button>
                         </div>
                     </div>
-                </main>
-
-                {/* Notifications */}
-                {notification && (
-                    <div className={cn(
-                        "fixed top-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl flex items-center gap-4 z-[70] transition-all duration-500 shadow-2xl backdrop-blur-2xl border",
-                        notification.error ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-orange-500/10 border-orange-500/20 text-orange-400"
-                    )}>
-                        {notification.error ? <AlertCircle className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
-                        <span className="text-sm font-black uppercase tracking-widest">{notification.text}</span>
-                        <button onClick={() => setNotification(null)} className="ml-2 hover:bg-white/5 p-1 rounded-full transition-colors">
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-                )}
-            </div>
+                </div>
+            </main>
+        </div>
         </>
     );
 }

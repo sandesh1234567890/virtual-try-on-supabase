@@ -28,7 +28,7 @@ This project is a high-end, Next.js-powered fashion technology suite featuring t
 To resolve "Access Denied" and "Model Not Found" errors, the following models were assigned based on regional availability and capability:
 - **Combo Try-On**: `gemini-3-pro-image-preview`
 - **Standard Try-On**: `gemini-2.5-flash-image`
-- **V-ROUND PRO**: `gemini-2.0-flash-exp-image-generation`
+- **V-ROUND PRO**: `gemini-2.5-flash-image`
 
 ### Backend Routes (`/app/api/`)
 - `combo-try-on/`: Handles multi-image synthesis.

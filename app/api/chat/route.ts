@@ -1,73 +1,138 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODEL_NAME = "gemini-1.5-flash"; // Fixed model name
 
-const PRODUCTS = {
-    tops: [
-        { id: 't1', name: 'Midnight Dragon Tee (Black)', img: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=400' },
-        { id: 't2', name: 'Crimson Tech Hoodie (Red)', img: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=400' },
-        { id: 't3', name: 'Imperial Oxford (White)', img: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=400' },
-        { id: 't4', name: 'Cyber Mesh (Grey)', img: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&q=80&w=400' },
-    ],
-    pants: [
-        { id: 'b1', name: 'Cargo Tech Pants (Black)', img: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&q=80&w=400' },
-        { id: 'b2', name: 'Architecture Denim (Blue)', img: 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?auto=format&fit=crop&q=80&w=400' },
-        { id: 'b3', name: 'Stealth Slacks (Grey)', img: 'https://images.unsplash.com/photo-1551488852-081bd4c9028c?auto=format&fit=crop&q=80&w=400' },
-    ],
-    shoes: [
-        { id: 's1', name: 'Talon Lows (Black)', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=400' },
-        { id: 's2', name: 'Pulse Runners (White)', img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&q=80&w=400' },
-        { id: 's3', name: 'Scale-Lock Boots (Brown)', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=400' },
-    ]
-};
-
-const SYSTEM_PROMPT = `Dragon Stylist AI. Fashion only.
-Tasks: Expert styling; Analyze imgs; Search catalog; Pairings.
-Rules: Follow-up? If user says "yes" or "more", provide FRESH alternatives. Keep context. No fluff/bold/stars. Clean MD.
-Format: [[SUGGESTIONS: {"tops":["ID"],"pants":["ID"],"shoes":["ID"]}]] (Arrays or null).
-Catalog: ${JSON.stringify(PRODUCTS)}`;
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    if (!OPENAI_API_KEY) return NextResponse.json({ error: "API Key missing" }, { status: 500 });
+    if (!GEMINI_API_KEY) {
+        return NextResponse.json({ error: "API Key missing in environment" }, { status: 500 });
+    }
 
     try {
         const { messages, image } = await req.json();
 
-        // Balanced Optimization: 10 messages for better context depth
-        const trimmedHistory = messages.slice(-10);
+        // 1. Fetch dynamic products
+        const dbProducts = await prisma.product.findMany();
 
-        const processedMessages = trimmedHistory.map((m: any, idx: number) => {
+        // 2. Format products for the AI catalog
+        const formattedCatalog = {
+            tops: dbProducts.filter(p => {
+                const cat = p.category.toLowerCase();
+                return cat.includes('top') || cat.includes('hoodie') || cat.includes('shirt') || cat.includes('jacket') || cat.includes('coat') || cat.includes('t-shirt');
+            }).map(p => ({ id: p.id, name: p.name, category: p.category })),
+            bottoms: dbProducts.filter(p => {
+                const cat = p.category.toLowerCase();
+                return cat.includes('bottom') || cat.includes('pant') || cat.includes('denim') || cat.includes('jeans') || cat.includes('slacks');
+            }).map(p => ({ id: p.id, name: p.name, category: p.category })),
+            shoes: dbProducts.filter(p => {
+                const cat = p.category.toLowerCase();
+                return cat.includes('shoe') || cat.includes('boot') || cat.includes('runner') || cat.includes('kicks');
+            }).map(p => ({ id: p.id, name: p.name, category: p.category })),
+            suits: dbProducts.filter(p => p.category.toLowerCase().includes('suit')).map(p => ({ id: p.id, name: p.name, category: p.category })),
+            dresses: dbProducts.filter(p => p.category.toLowerCase().includes('dress')).map(p => ({ id: p.id, name: p.name, category: p.category })),
+        };
+
+        const SYSTEM_PROMPT = `You are the AI Fashion Architect.
+   
+Tone: Professional, futuristic, fashion-forward. Your goal is to guide the user through the Dragon Studio Virtual Try-On ecosystem.
+
+NAVIGATION LOGIC:
+If the user wants to move to a different part of the app, append the navigation tag at the end of your response.
+Valid views:
+- 'home' (Landing page)
+- 'catalog' (Product discovery)
+- 'studio' (Dragon Studio / Try-On)
+- 'vround' (360° Video / V-Round)
+
+Format: [[NAVIGATE: view_name]]
+
+CATALOG DATA:
+Tops: ${JSON.stringify(formattedCatalog.tops)}
+Bottoms: ${JSON.stringify(formattedCatalog.bottoms)}
+Shoes: ${JSON.stringify(formattedCatalog.shoes)}
+Suits: ${JSON.stringify(formattedCatalog.suits)}
+Dresses: ${JSON.stringify(formattedCatalog.dresses)}
+
+SUGGESTIONS LOGIC:
+Always provide relevant item IDs in the following format at the end of your response:
+[[SUGGESTIONS: {"tops":[],"bottoms":[],"shoes":[],"suits":[],"dresses":[]}]]
+
+Example: "I recommend the Cyberpunk Hoodie for your look. [[NAVIGATE: studio]] [[SUGGESTIONS: {"tops":["hoodie-123"],"bottoms":[],"shoes":[],"suits":[],"dresses":[]}]]"`;
+
+        // Gemini history pruning
+        const trimmedHistory = messages.slice(-10);
+        
+        // Convert messages to Gemini format
+        const contents = trimmedHistory.map((m: any, idx: number) => {
+            const role = m.role === 'assistant' ? 'model' : 'user';
+            
+            // Handle image in user message
             if (m.role === 'user' && image && idx === trimmedHistory.length - 1) {
+                const base64Data = image.split(',')[1];
+                const mimeType = image.split(',')[0].split(':')[1].split(';')[0];
+                
                 return {
                     role: 'user',
-                    content: [{ type: 'text', text: m.content }, { type: 'image_url', image_url: { url: image } }]
+                    parts: [
+                        { text: m.content || "Analyze this clothing style." },
+                        { inlineData: { mimeType, data: base64Data } }
+                    ]
                 };
             }
-            return m;
+            
+            return {
+                role: role,
+                parts: [{ text: m.content }]
+            };
         });
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
+        // Add System Prompt as the first user message if system_instruction is not supported/failing
+        // However, we will use the correct URL format for v1beta
+        const API_VERSION = "v1beta";
+        const GEMINI_URL = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+
+        const requestBody = {
+            system_instruction: {
+                parts: [{ text: SYSTEM_PROMPT }]
             },
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...processedMessages],
-                temperature: 0.6,
-                max_tokens: 350
-            })
+            contents: contents,
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 500,
+            }
+        };
+
+        const response = await fetch(GEMINI_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            return NextResponse.json({ error: error.error?.message || "OpenAI Error" }, { status: response.status });
+            const errorData = await response.json();
+            console.error("Gemini Details Error:", errorData);
+            return NextResponse.json({ 
+                error: errorData.error?.message || "Gemini Connection Failed",
+                details: errorData.error
+            }, { status: 400 });
         }
 
         const data = await response.json();
-        return NextResponse.json(data);
+        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
+        
+        return NextResponse.json({
+            choices: [{
+                message: {
+                    role: 'assistant',
+                    content: aiText
+                }
+            }]
+        });
     } catch (error: any) {
+        console.error("Chat API Critical error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

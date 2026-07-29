@@ -1,0 +1,15 @@
+﻿[dotenv@17.2.3] injecting env (9) from .env -- tip: ≡ƒôí add observability to secrets: https://dotenvx.com/ops
+Testing Gemini Chat API at http://localhost:3000/api/chat...
+Success! Response from API:
+{
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "For a sunny day, how about a light T-shirt paired with some stylish jeans? You could finish the look with comfortable sneakers or loafers.\n\nTo take this to the next level, head over to Dragon Studio (/dragon) after selecting your garments. Upload a photo, and with \"Ignition,\" you'll see a neural rendering of the complete outfit.\n\n[[SUGGESTIONS: {\"tops\":[\"cmlj2pc3y000012f97jihsn6w\",\"cmlj2pccm000112f9bzynv717\"],\"bottoms\":[\"cmlj2pfx0000b12f9gkg91tfl\",\"cmlj2ph6i000h12f9sngfnq63\"],\"shoes\":[\"cmlj2phr3000k12f9de7hn7qn\"]}]]\n"
+      }
+    }
+  ]
+}
+
+Γ£à Suggestions found in response.

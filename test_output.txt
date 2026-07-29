@@ -1,0 +1,29 @@
+﻿[dotenv@17.2.3] injecting env (9) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+Testing Gemini Chat API at http://localhost:3000/api/chat...
+node : Error from API: 
+models/gemini-1.5-flash
+ is not found for API 
+version v1beta, or is 
+not supported for 
+generateContent. Call 
+ListModels to see the 
+list of available 
+models and their 
+supported methods.
+At line:1 char:1
++ node scripts/test-gem
+ini-chat.js 2>&1 | 
+Out-File -Encoding 
+utf8 test_ ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error from AP   
+ I:...ported method    
+s.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
